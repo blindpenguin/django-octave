@@ -16,10 +16,10 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: false
 
@@ -45,7 +45,7 @@ jobs:
         run: uv run --isolated --no-project --with dist/*.tar.gz scripts/smoke_dist.py
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/*.whl
