@@ -72,6 +72,31 @@ uv run django-octave add-model blog Post \
 Field form: `name:type[:option=value…]`. Types: `char`, `text`, `int`, `bool`, `decimal`, `date`, `datetime`, `email`, `url`, `slug`, `uuid`.  
 If no `--field` is given, defaults to `name:char:max=255`. Updates serializer, admin, viewset, and router for the new model.
 
+### Add a serializer
+
+```bash
+uv run django-octave add-serializer blog Post \
+  --fields title,id \
+  --read-only id \
+  --path /path/to/project
+```
+
+Inspects `apps/<app>/models.py` for field names (plus `id` / timestamps when the model uses TimeStamped/TenantAware bases). Omit `--fields` to include all inspected fields. Use `--no-id` to drop `id`. `--force` replaces an existing `<Model>Serializer`.
+
+### Add a viewset
+
+```bash
+uv run django-octave add-viewset blog Post \
+  --permission AllowAny \
+  --filter title,published \
+  --search title \
+  --ordering title \
+  --tag posts \
+  --path /path/to/project
+```
+
+Creates or refreshes `<Model>ViewSet` with Spectacular tags, filter/search/ordering, and router registration. If the serializer is missing, a default one is created automatically. Permissions: `IsAuthenticated` (default), `AllowAny`, `IsAdminUser`. `--force` replaces an existing viewset.
+
 ## Requirements
 
 - Python 3.14+ (generator)

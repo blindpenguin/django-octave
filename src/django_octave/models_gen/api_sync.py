@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import libcst as cst
-
 from django_octave.fields.codegen import filterable_field_names
 from django_octave.fields.parser import FieldSpec
-from django_octave.models_gen.writer import ModelWriteError, _RemoveClass
+from django_octave.models_gen.cst_util import (
+    add_to_import,
+    ensure_router_registration,
+    upsert_class,
+)
 from django_octave.naming import pascal_to_snake, pluralize
 
 
@@ -59,70 +61,6 @@ class {model_name}ViewSet(viewsets.ModelViewSet):
     filterset_fields = {filter_repr}
     search_fields = {search_repr}
 """
-
-
-def _ensure_import_lines(source: str, lines: list[str]) -> str:
-    for line in lines:
-        bare = line if line.endswith("\n") else line + "\n"
-        if bare.strip() and bare.strip() not in {row.strip() for row in source.splitlines()}:
-            parts = source.splitlines(keepends=True)
-            idx = 0
-            for i, row in enumerate(parts):
-                if row.startswith("from __future__") or row.startswith(("import ", "from ")):
-                    idx = i + 1
-            parts.insert(idx, bare)
-            source = "".join(parts)
-    return source
-
-
-def _add_to_import(source: str, module: str, symbol: str) -> str:
-    prefix = f"from {module} import "
-    if symbol in source and prefix in source:
-        # crude: if symbol already imported from module
-        for line in source.splitlines():
-            if line.startswith(prefix) and symbol in line:
-                return source
-    if prefix in source:
-        lines = source.splitlines(keepends=True)
-        for i, line in enumerate(lines):
-            if line.startswith(prefix) and symbol not in line:
-                lines[i] = line.rstrip("\n").rstrip() + f", {symbol}\n"
-                return "".join(lines)
-    return _ensure_import_lines(source, [f"{prefix}{symbol}\n"])
-
-
-def _class_exists(source: str, class_name: str) -> bool:
-    try:
-        module = cst.parse_module(source)
-    except cst.ParserSyntaxError:
-        return f"class {class_name}" in source
-    return any(isinstance(n, cst.ClassDef) and n.name.value == class_name for n in module.body)
-
-
-def _upsert_class(
-    path: Path,
-    class_name: str,
-    class_src: str,
-    *,
-    force: bool,
-    header_imports: list[str],
-) -> None:
-    source = path.read_text(encoding="utf-8")
-    source = _ensure_import_lines(source, header_imports)
-    path.write_text(source, encoding="utf-8")
-    source = path.read_text(encoding="utf-8")
-    exists = _class_exists(source, class_name)
-    if exists and not force:
-        return
-    try:
-        module = cst.parse_module(source)
-    except cst.ParserSyntaxError as exc:
-        raise ModelWriteError(f"Could not parse {path}: {exc}") from exc
-    if exists and force:
-        module = module.visit(_RemoveClass(class_name))
-    addition = cst.parse_module(class_src.lstrip("\n"))
-    updated = module.with_changes(body=[*module.body, *addition.body])
-    path.write_text(updated.code, encoding="utf-8")
 
 
 def _write_serializers_file(path: Path, app_name: str, model_name: str, fields: list[FieldSpec]) -> None:
@@ -193,33 +131,6 @@ urlpatterns = [
     )
 
 
-def _ensure_router_registration(path: Path, app_name: str, model_name: str) -> None:
-    source = path.read_text(encoding="utf-8")
-    snake = pascal_to_snake(model_name)
-    plural = pluralize(snake)
-    register = f'router.register("{plural}", {model_name}ViewSet, basename="{snake}")'
-    source = _add_to_import(source, f"apps.{app_name}.views", f"{model_name}ViewSet")
-    if register not in source and f"{model_name}ViewSet" not in [
-        line for line in source.splitlines() if "router.register" in line
-    ]:
-        # still add if no register line for this viewset
-        if not any(
-            "router.register" in line and f"{model_name}ViewSet" in line
-            for line in source.splitlines()
-        ):
-            ridx = source.rfind("router.register(")
-            if ridx != -1:
-                end = source.find("\n", ridx)
-                source = source[: end + 1] + register + "\n" + source[end + 1 :]
-            else:
-                idx = source.find("urlpatterns")
-                if idx == -1:
-                    source = source.rstrip() + "\n" + register + "\n"
-                else:
-                    source = source[:idx] + register + "\n\n" + source[idx:]
-    path.write_text(source, encoding="utf-8")
-
-
 def sync_api_stubs(
     app_dir: Path,
     *,
@@ -237,13 +148,13 @@ def sync_api_stubs(
     if not serializers.exists():
         _write_serializers_file(serializers, app_name, model_name, fields)
     else:
-        text = _add_to_import(
+        text = add_to_import(
             serializers.read_text(encoding="utf-8"),
             f"apps.{app_name}.models",
             model_name,
         )
         serializers.write_text(text, encoding="utf-8")
-        _upsert_class(
+        upsert_class(
             serializers,
             f"{model_name}Serializer",
             _serializer_class(model_name, fields),
@@ -254,13 +165,13 @@ def sync_api_stubs(
     if not admin.exists():
         _write_admin_file(admin, app_name, model_name, fields)
     else:
-        text = _add_to_import(
+        text = add_to_import(
             admin.read_text(encoding="utf-8"),
             f"apps.{app_name}.models",
             model_name,
         )
         admin.write_text(text, encoding="utf-8")
-        _upsert_class(
+        upsert_class(
             admin,
             f"{model_name}Admin",
             _admin_class(model_name, fields),
@@ -272,10 +183,10 @@ def sync_api_stubs(
         _write_views_file(views, app_name, model_name, fields)
     else:
         text = views.read_text(encoding="utf-8")
-        text = _add_to_import(text, f"apps.{app_name}.models", model_name)
-        text = _add_to_import(text, f"apps.{app_name}.serializers", f"{model_name}Serializer")
+        text = add_to_import(text, f"apps.{app_name}.models", model_name)
+        text = add_to_import(text, f"apps.{app_name}.serializers", f"{model_name}Serializer")
         views.write_text(text, encoding="utf-8")
-        _upsert_class(
+        upsert_class(
             views,
             f"{model_name}ViewSet",
             _viewset_class(model_name, fields),
@@ -290,4 +201,4 @@ def sync_api_stubs(
     if not urls.exists():
         _write_urls_file(urls, app_name, model_name)
     else:
-        _ensure_router_registration(urls, app_name, model_name)
+        ensure_router_registration(urls, app_name, model_name)
