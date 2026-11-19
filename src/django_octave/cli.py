@@ -1,0 +1,29 @@
+"""Typer application entry for django-octave."""
+
+from __future__ import annotations
+
+import typer
+
+app = typer.Typer(
+    name="django-octave",
+    help="Opinionated generator for production-ready Django REST API projects.",
+    no_args_is_help=True,
+)
+
+
+@app.callback()
+def _root() -> None:
+    """Opinionated generator for production-ready Django REST API projects."""
+
+
+def _register_commands() -> None:
+    """Import command modules so `@app.command` handlers attach."""
+    from django_octave.commands import new as _new  # noqa: F401
+
+
+_register_commands()
+
+
+def main() -> None:
+    """Console-script entrypoint."""
+    app()

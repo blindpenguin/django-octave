@@ -1,0 +1,44 @@
+{% if use_multitenancy %}
+"""Resolve tenant from X-Tenant-ID and bind to request + contextvar."""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+
+from django.http import HttpRequest, HttpResponse
+
+from apps.core.models import Tenant, set_current_tenant
+
+
+class TenantMiddleware:
+    """Bind tenant from authenticated membership + X-Tenant-ID header."""
+
+    header = "HTTP_X_TENANT_ID"
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        set_current_tenant(None)
+        request.tenant = None  # type: ignore[attr-defined]
+        tenant_id = request.META.get(self.header)
+        user = getattr(request, "user", None)
+        if tenant_id and user is not None and user.is_authenticated:
+            tenant = (
+                Tenant.objects.filter(
+                    id=tenant_id,
+                    memberships__user=user,
+                )
+                .distinct()
+                .first()
+            )
+            if tenant is not None:
+                request.tenant = tenant  # type: ignore[attr-defined]
+                set_current_tenant(tenant)
+        try:
+            return self.get_response(request)
+        finally:
+            set_current_tenant(None)
+{% else %}
+# Multitenancy disabled for this project.
+{% endif %}

@@ -1,0 +1,47 @@
+services:
+  web:
+    build: .
+    command: uv run python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+{% if include_db_service %}
+    depends_on:
+      - db
+{% endif %}
+{% if include_db_service %}
+
+  db:
+{% if is_postgres %}
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: {{ project_slug }}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+{% endif %}
+{% if is_mariadb %}
+    image: mariadb:11
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: {{ project_slug }}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadata:/var/lib/mysql
+{% endif %}
+
+volumes:
+{% if is_postgres %}
+  pgdata:
+{% endif %}
+{% if is_mariadb %}
+  mariadata:
+{% endif %}
+{% endif %}

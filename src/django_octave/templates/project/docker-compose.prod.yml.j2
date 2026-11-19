@@ -1,0 +1,43 @@
+services:
+  web:
+    build: .
+    command: uv run gunicorn config.wsgi:application --bind 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+{% if include_db_service %}
+    depends_on:
+      - db
+{% endif %}
+{% if include_db_service %}
+
+  db:
+{% if is_postgres %}
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: {{ project_slug }}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+{% endif %}
+{% if is_mariadb %}
+    image: mariadb:11
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: {{ project_slug }}
+    volumes:
+      - mariadata:/var/lib/mysql
+{% endif %}
+
+volumes:
+{% if is_postgres %}
+  pgdata:
+{% endif %}
+{% if is_mariadb %}
+  mariadata:
+{% endif %}
+{% endif %}

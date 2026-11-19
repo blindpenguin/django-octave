@@ -1,0 +1,42 @@
+[project]
+name = "django-octave"
+version = "0.1.0"
+description = "Opinionated CLI to kickstart production-ready Django REST API projects"
+readme = "README.md"
+license = "GPL-3.0-only"
+authors = [
+    { name = "BlindPenguin", email = "blindpenguin@users.noreply.github.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "jinja2>=3.1.6",
+    "rich>=15.0.0",
+    "typer>=0.29.2",
+]
+
+[project.scripts]
+django-octave = "django_octave:main"
+
+[build-system]
+requires = ["uv_build>=0.13.5,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17.6",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py314"
+src = ["src", "tests"]
+extend-exclude = ["src/django_octave/templates"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]

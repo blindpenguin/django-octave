@@ -1,0 +1,17 @@
+"""Smoke tests for URL configuration."""
+
+from __future__ import annotations
+
+from django.urls import reverse
+
+
+def test_schema_url_resolves() -> None:
+    assert reverse("schema") == "/api/schema/"
+
+
+def test_swagger_url_resolves() -> None:
+    assert reverse("swagger-ui") == "/api/schema/swagger-ui/"
+
+
+def test_token_url_resolves() -> None:
+    assert reverse("token_obtain_pair") == "/api/auth/token/"

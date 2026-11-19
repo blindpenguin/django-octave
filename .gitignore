@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[oc]
+*.egg-info/
+build/
+dist/
+wheels/
+.eggs/
+*.egg
+
+# Virtual environments / tooling
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+!src/django_octave/templates/**/.env.example.j2
+
+# Spec Workflow MCP runtime (keep specs/steering/templates in git)
+.spec-workflow/approvals/
+.spec-workflow/archive/
+.spec-workflow/user-templates/
+audit.log
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*~

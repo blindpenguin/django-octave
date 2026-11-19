@@ -1,0 +1,119 @@
+"""Shared model primitives."""
+
+from __future__ import annotations
+
+{% if use_multitenancy %}
+import uuid
+from contextvars import ContextVar
+
+{% endif %}
+from django.db import models
+{% if use_multitenancy %}
+from django.db.models import QuerySet
+{% endif %}
+
+
+class TimeStampedModel(models.Model):
+    """Abstract base with created/updated timestamps."""
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+
+{% if use_multitenancy %}
+
+_current_tenant: ContextVar[Tenant | None] = ContextVar("current_tenant", default=None)
+
+
+def get_current_tenant() -> Tenant | None:
+    return _current_tenant.get()
+
+
+def set_current_tenant(tenant: Tenant | None) -> None:
+    _current_tenant.set(tenant)
+
+
+class Tenant(TimeStampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+    slug = models.SlugField(max_length=63, unique=True)
+
+    class Meta:
+        ordering = ("name",)
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class Membership(TimeStampedModel):
+    class Role(models.TextChoices):
+        OWNER = "owner", "Owner"
+        MEMBER = "member", "Member"
+
+    user = models.ForeignKey(
+        "users.User",
+        on_delete=models.CASCADE,
+        related_name="memberships",
+    )
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="memberships",
+    )
+    role = models.CharField(max_length=32, choices=Role.choices, default=Role.MEMBER)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("user", "tenant"),
+                name="uniq_membership_user_tenant",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.user} @ {self.tenant} ({self.role})"
+
+
+class TenantQuerySet(QuerySet):
+    def for_current_tenant(self) -> TenantQuerySet:
+        tenant = get_current_tenant()
+        if tenant is None:
+            return self.none()
+        return self.filter(tenant=tenant)
+
+
+class TenantManager(models.Manager.from_queryset(TenantQuerySet)):
+    def get_queryset(self) -> TenantQuerySet:
+        qs = super().get_queryset()
+        tenant = get_current_tenant()
+        if tenant is None:
+            return qs.none()
+        return qs.filter(tenant=tenant)
+
+
+class TenantAwareModel(TimeStampedModel):
+    """Abstract base for row-level tenant-scoped models."""
+
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="%(class)ss",
+    )
+
+    objects = TenantManager()
+    all_objects = models.Manager()
+
+    class Meta:
+        abstract = True
+
+    def save(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        tenant = get_current_tenant()
+        if self.tenant_id is None:
+            if tenant is None:
+                msg = "Cannot save tenant-scoped model without a current tenant"
+                raise RuntimeError(msg)
+            self.tenant = tenant
+        super().save(*args, **kwargs)
+{% endif %}

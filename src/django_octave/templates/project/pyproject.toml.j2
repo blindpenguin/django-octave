@@ -1,0 +1,32 @@
+[project]
+name = "{{ project_slug }}"
+version = "0.1.0"
+description = "{{ project_name }} — Django REST API"
+requires-python = ">={{ python_version }}"
+dependencies = [
+{% for pkg in packages %}
+    "{{ pkg }}",
+{% endfor %}
+]
+
+[dependency-groups]
+dev = [
+{% for pkg in dev_packages %}
+    "{{ pkg }}",
+{% endfor %}
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.local"
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py{{ python_version.replace('.', '') }}"
+src = ["apps", "config", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

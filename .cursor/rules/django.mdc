@@ -1,0 +1,43 @@
+---
+description: Django architecture — apps, models, thin views, services
+globs: "**/models.py,**/views*.py,**/urls.py,**/serializers.py,**/admin.py,**/apps.py,**/forms.py,**/managers.py,**/services.py,**/selectors.py,**/settings*.py,**/migrations/*.py"
+alwaysApply: false
+---
+
+# Django
+
+## Layout
+
+- One app per business capability (not per technical layer)
+- Project package = settings, root URLs, ASGI/WSGI only — no domain models/views there
+- Custom user model from day one if auth exists
+- Settings from environment; fail fast on missing production secrets
+
+## Models
+
+- Singular PascalCase models; `snake_case` field names
+- Field order: DB fields → relationships → `Meta` → `__str__` → properties → methods
+- Put single-model query/logic on managers/querysets; multi-model writes and side effects in services
+
+```python
+# ❌ BAD — fat view
+def create_order(request):
+    order = Order.objects.create(user=request.user)
+    order.total = sum(...)
+    order.save()
+    send_email(order)
+    return redirect(order)
+
+# ✅ GOOD — thin view + service
+def create_order(request):
+    order = order_create(user=request.user, items=…)
+    return redirect(order)
+```
+
+## Views & services
+
+- First view arg is always `request`
+- Views: parse input, authz, call service/selector, return response
+- `services.py` = writes / use-cases; `selectors.py` = optimized reads (optional until needed)
+- Prefer explicit `related_name`; avoid N+1 (`select_related` / `prefetch_related`)
+- Migrations: never edit applied migrations; data migrations for backfills; no in-place destructive type changes without expand/contract

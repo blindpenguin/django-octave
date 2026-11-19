@@ -1,0 +1,14 @@
+---
+description: Project stack, layout, and hard guardrails for django-octave
+alwaysApply: true
+---
+
+# Project
+
+- Stack: Python **3.14+**, package layout under `src/django_octave/`, managed with **uv** (`pyproject.toml`)
+- Run everything via uv: `uv sync`, `uv add <pkg>`, `uv add --dev <pkg>`, `uv run <cmd>`
+- Prefer Ruff (lint/format) and pytest once configured in `pyproject.toml`; do not introduce Black/isort/flake8
+- Never commit secrets, `.env`, or credentials; read settings from the environment
+- Do not edit `.venv/`, build artifacts, or lockfiles unless dependency changes require it
+- Match existing project patterns; no drive-by refactors or unrelated files
+- For non-trivial features, follow Spec Workflow (see `spec-workflow` rule) before large implementation

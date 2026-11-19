@@ -1,0 +1,76 @@
+# {{ project_name }}
+
+Opinionated Django REST API generated with [django-octave](https://github.com/).
+
+## Stack
+
+- Django + Django REST Framework + drf-spectacular
+- SimpleJWT authentication
+- Database: **{{ database }}**
+{% if use_docker %}- Docker: yes (dev + prod Compose files)
+{% else %}- Docker: not included
+{% endif %}{% if use_multitenancy %}- Row-level multitenancy enabled (`X-Tenant-ID` header)
+{% endif %}
+
+## Quick start
+
+```bash
+uv sync
+cp .env.example .env
+# edit .env — set DJANGO_SECRET_KEY
+uv run python manage.py migrate
+uv run python manage.py createsuperuser
+```
+
+{% if use_docker %}
+### Local (uv)
+
+```bash
+uv run python manage.py runserver
+```
+
+### Docker (dev)
+
+```bash
+docker compose up --build
+```
+
+### Docker (prod-oriented)
+
+```bash
+docker compose -f docker-compose.prod.yml up --build
+```
+{% else %}
+```bash
+uv run python manage.py runserver
+```
+{% endif %}
+
+## API docs
+
+With the server running:
+
+- Swagger UI: http://127.0.0.1:8000/api/schema/swagger-ui/
+- ReDoc: http://127.0.0.1:8000/api/schema/redoc/
+- OpenAPI schema: http://127.0.0.1:8000/api/schema/
+
+## Auth
+
+JWT endpoints:
+
+- `POST /api/auth/token/`
+- `POST /api/auth/token/refresh/`
+
+{% if use_multitenancy %}
+## Multitenancy
+
+Tenant-scoped models inherit `TenantAwareModel` from `apps.core`.
+Send header `X-Tenant-ID: <tenant-uuid>` on API requests.
+Writes without a resolved tenant fail closed; reads return empty querysets.
+{% endif %}
+
+## Tests
+
+```bash
+uv run pytest
+```
