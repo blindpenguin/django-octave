@@ -110,6 +110,29 @@ uv run pytest
 uv run ruff check src tests
 ```
 
+### Cutting a GitHub Release
+
+1. Bump `version` in `pyproject.toml` (e.g. with `uv version 0.1.1`).
+2. Commit the version bump.
+3. Tag and push (tag must match the package version, with a `v` prefix):
+
+```bash
+git tag -a v0.1.1 -m "v0.1.1"
+git push origin v0.1.1
+```
+
+That runs [`.github/workflows/release.yml`](.github/workflows/release.yml): build with `uv`, smoke-test the wheel and sdist, then create a [GitHub Release](https://github.com/blindpenguin/django-octave/releases) with the artifacts attached. Watch the run under Actions.
+
+PyPI publish is not part of this pipeline yet; install from a release asset or from a git checkout for now.
+
+Local smoke check (optional):
+
+```bash
+uv build
+uv run --isolated --no-project --with dist/*.whl scripts/smoke_dist.py
+uv run --isolated --no-project --with dist/*.tar.gz scripts/smoke_dist.py
+```
+
 ## License
 
 [GPL-3.0](LICENSE)
