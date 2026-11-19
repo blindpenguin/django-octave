@@ -60,6 +60,18 @@ Creates `apps/blog/` with a starter model, serializer, viewset, urls, and `servi
 - App names: `snake_case`, not reserved (`core`, `users`, …)
 - `--force` — replace an existing `apps/<name>/` (wiring stays idempotent)
 
+### Add a model
+
+```bash
+uv run django-octave add-model blog Post \
+  --field title:char:max=200 \
+  --field published:bool:default=false \
+  --path /path/to/project
+```
+
+Field form: `name:type[:option=value…]`. Types: `char`, `text`, `int`, `bool`, `decimal`, `date`, `datetime`, `email`, `url`, `slug`, `uuid`.  
+If no `--field` is given, defaults to `name:char:max=255`. Updates serializer, admin, viewset, and router for the new model.
+
 ## Requirements
 
 - Python 3.14+ (generator)

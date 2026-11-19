@@ -10,6 +10,7 @@ authors = [
 requires-python = ">=3.14"
 dependencies = [
     "jinja2>=3.1.6",
+    "libcst>=1.9.0",
     "rich>=15.0.0",
     "typer>=0.29.2",
 ]

@@ -84,3 +84,38 @@ def model_name_from_app(app_name: str) -> str:
     base = app_name.split("_")[-1]
     singular = singularize(base)
     return "".join(part.capitalize() for part in singular.split("_") if part) or "Item"
+
+
+_PASCAL_RE = re.compile(r"^[A-Z][A-Za-z0-9]*$")
+
+
+class InvalidModelNameError(ValueError):
+    """Raised when a model class name is invalid."""
+
+
+def validate_model_name(raw: str) -> str:
+    """Validate a PascalCase Django model class name."""
+    name = raw.strip()
+    if not _PASCAL_RE.match(name):
+        msg = f"Invalid model name {raw!r}: use PascalCase (e.g. BlogPost)"
+        raise InvalidModelNameError(msg)
+    if keyword.iskeyword(name):
+        msg = f"Model name {name!r} is a Python keyword"
+        raise InvalidModelNameError(msg)
+    return name
+
+
+def pascal_to_snake(name: str) -> str:
+    """Convert PascalCase to snake_case."""
+    chunks = re.sub(r"(.)([A-Z][a-z]+)", r"\1_\2", name)
+    return re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", chunks).lower()
+
+
+def pluralize(word: str) -> str:
+    """Best-effort English pluralization for URL segments."""
+    lower = word.lower()
+    if lower.endswith(("s", "x", "z", "ch", "sh")):
+        return f"{word}es"
+    if lower.endswith("y") and len(word) > 1 and word[-2].lower() not in "aeiou":
+        return f"{word[:-1]}ies"
+    return f"{word}s"
