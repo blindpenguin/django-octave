@@ -1,0 +1,24 @@
+"""Domain models for {{ app_name }}."""
+
+from __future__ import annotations
+
+from django.db import models
+
+{% if use_multitenancy %}
+from apps.core.models import TenantAwareModel
+
+
+class {{ model_name }}(TenantAwareModel):
+{% else %}
+from apps.core.models import TimeStampedModel
+
+
+class {{ model_name }}(TimeStampedModel):
+{% endif %}
+    name = models.CharField(max_length=255)
+
+    class Meta:
+        ordering = ("name",)
+
+    def __str__(self) -> str:
+        return self.name

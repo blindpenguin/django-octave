@@ -18,6 +18,7 @@ def _root() -> None:
 
 def _register_commands() -> None:
     """Import command modules so `@app.command` handlers attach."""
+    from django_octave.commands import add as _add  # noqa: F401
     from django_octave.commands import new as _new  # noqa: F401
 
 

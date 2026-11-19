@@ -12,6 +12,7 @@ It scaffolds Django, DRF, OpenAPI (drf-spectacular), JWT auth, env-based setting
 - **Optional Docker** — dev and production Compose/Dockerfile with `uv`
 - **Optional row-level multitenancy** — first-party, create-time only
 - **Layout** — `config/` project package, domain apps under `apps/`, always-on `apps.core` (e.g. timestamped models)
+- **`django-octave add`** — scaffold domain apps with DRF API stubs after create
 
 ## Install
 
@@ -43,6 +44,21 @@ Other options:
 - `--multitenancy` / `--no-multitenancy`
 - `--path DIR` — parent directory for the project
 - `--force` — allow generating into a non-empty directory
+
+### Add an app
+
+From inside a generated project (or pass `--path`):
+
+```bash
+uv run django-octave add blog
+# or
+uv run django-octave add blog --path /path/to/project
+```
+
+Creates `apps/blog/` with a starter model, serializer, viewset, urls, and `services.py`; registers the app in `INSTALLED_APPS` and mounts `api/blog/`.
+
+- App names: `snake_case`, not reserved (`core`, `users`, …)
+- `--force` — replace an existing `apps/<name>/` (wiring stays idempotent)
 
 ## Requirements
 
