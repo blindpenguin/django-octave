@@ -85,6 +85,13 @@ def render_project(ctx: ProjectContext) -> Path:
             else:
                 shutil.copy2(path, dest)
 
+        # Ensure WhiteNoise's STATIC_ROOT exists even if the template was skipped.
+        staticfiles = tmp_root / "staticfiles"
+        staticfiles.mkdir(exist_ok=True)
+        gitkeep = staticfiles / ".gitkeep"
+        if not gitkeep.exists():
+            gitkeep.write_text("", encoding="utf-8")
+
         if target.exists() and ctx.force:
             shutil.rmtree(target)
         target.parent.mkdir(parents=True, exist_ok=True)

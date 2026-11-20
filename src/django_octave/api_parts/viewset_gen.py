@@ -16,6 +16,7 @@ from django_octave.inspect.model_fields import (
 from django_octave.models_gen.cst_util import (
     add_to_import,
     class_exists,
+    coalesce_from_imports,
     ensure_import_lines,
     ensure_router_registration,
     upsert_class,
@@ -320,6 +321,8 @@ def write_viewset(
                 perm_import_line,
             ],
         )
+        cleaned = coalesce_from_imports(views_path.read_text(encoding="utf-8"))
+        views_path.write_text(cleaned, encoding="utf-8")
 
     urls_path = app_dir / "urls.py"
     if not urls_path.exists():

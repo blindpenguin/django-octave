@@ -3,3 +3,13 @@
 from config.settings.base import *  # noqa: F403
 
 DEBUG = True
+
+# Serve app/static via finders without collectstatic; keep STATIC_ROOT present.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_AUTOREFRESH = True

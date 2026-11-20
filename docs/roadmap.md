@@ -18,6 +18,8 @@ Pick items and open a Spec Workflow spec before implementing.
 | `add-test` | factory-boy + pytest API/model stubs | `add-test` |
 | `add-celery` / `add-task` | Opt-in Celery+Redis, Compose workers/Beat, `@shared_task` stubs | `add-celery` |
 | User docs site | MkDocs Material under `docs/`, slim README, GitHub Pages | `user-docs` |
+| Generator polish | Basename/reverse, cross-app factories, AllowAny tests, class spacing | `generator-polish` |
+| Generator heuristics | Nested serializer order, action tags, shared `api/` mounts, ordering, import coalesce, `add --model` | `generator-heuristics` |
 | GitHub Release CI | Tag → build → smoke → GitHub Release assets | `github-release-ci` |
 
 ## Planned: Vue + Nuxt UI frontend scaffolding

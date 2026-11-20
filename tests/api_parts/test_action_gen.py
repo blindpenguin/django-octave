@@ -88,6 +88,75 @@ def test_detect_viewset_tag() -> None:
     assert detect_viewset_tag(VIEWS, "PostViewSet") == "post"
 
 
+TWO_VIEWSETS = '''"""API views for kb."""
+
+from drf_spectacular.utils import extend_schema, extend_schema_view
+from rest_framework import viewsets
+
+@extend_schema_view(
+    list=extend_schema(tags=["kb"]),
+    retrieve=extend_schema(tags=["kb"]),
+)
+class KbViewSet(viewsets.ModelViewSet):
+    queryset = None
+    serializer_class = None
+
+@extend_schema_view(
+    list=extend_schema(tags=["articles"]),
+    retrieve=extend_schema(tags=["articles"]),
+)
+class ArticleViewSet(viewsets.ModelViewSet):
+    queryset = None
+    serializer_class = None
+'''
+
+
+def test_detect_viewset_tag_second_class_not_first() -> None:
+    assert detect_viewset_tag(TWO_VIEWSETS, "KbViewSet") == "kb"
+    assert detect_viewset_tag(TWO_VIEWSETS, "ArticleViewSet") == "articles"
+
+
+def test_write_action_uses_target_viewset_tag(tmp_path: Path) -> None:
+    (tmp_path / "views.py").write_text(TWO_VIEWSETS, encoding="utf-8")
+    write_action(
+        tmp_path,
+        options=ActionOptions(
+            app_name="kb",
+            viewset="Article",
+            action_name="publish",
+        ),
+    )
+    text = (tmp_path / "views.py").read_text(encoding="utf-8")
+    # Tag must be articles (target), not kb (earlier viewset).
+    assert '@extend_schema(tags=["articles"])' in text
+    assert "def publish" in text
+
+
+def test_action_url_hint_no_app_segment() -> None:
+    from django_octave.api_parts.action_gen import action_url_hint
+
+    assert (
+        action_url_hint(
+            app_name="tickets",
+            viewset_class="TicketViewSet",
+            action_name="close",
+            detail=True,
+            url_path=None,
+        )
+        == "/api/tickets/{pk}/close/"
+    )
+    assert (
+        action_url_hint(
+            app_name="kb",
+            viewset_class="ArticleViewSet",
+            action_name="publish",
+            detail=True,
+            url_path=None,
+        )
+        == "/api/articles/{pk}/publish/"
+    )
+
+
 def test_write_action_force_and_options(tmp_path: Path) -> None:
     (tmp_path / "views.py").write_text(VIEWS, encoding="utf-8")
     (tmp_path / "permissions.py").write_text(

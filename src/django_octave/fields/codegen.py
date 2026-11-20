@@ -105,12 +105,20 @@ def needs_uuid_import(fields: list[FieldSpec]) -> bool:
 
 
 def str_field_name(fields: list[FieldSpec]) -> str | None:
+    """Pick a default ordering / ``__str__`` field.
+
+    Prefer human label names, then other char-like fields. Do not prefer
+    ``text`` when any char/slug/email field exists (e.g. ``note`` over ``body``).
+    """
     names = {f.name for f in fields}
-    for candidate in ("name", "title"):
+    for candidate in ("name", "title", "subject", "slug"):
         if candidate in names:
             return candidate
     for field in fields:
-        if field.type_key in {"char", "slug", "email", "text"}:
+        if field.type_key in {"char", "slug", "email"}:
+            return field.name
+    for field in fields:
+        if field.type_key == "text":
             return field.name
     return None
 

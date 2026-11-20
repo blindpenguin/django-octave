@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from django_octave.formatting import format_written_python
 from django_octave.inspect.model_fields import (
     ModelFieldInfo,
     inspect_model_fields_path,
@@ -67,7 +69,7 @@ def _field_factory_line(
             "AUTH_USER_MODEL",
         }:
             return f"    {name} = factory.SubFactory(UserFactory)"
-        if rel_app == app_name:
+        if rel_app and rel_model:
             stem = factory_module_stem(rel_app, rel_model)
             return (
                 f"    {name} = factory.SubFactory("
@@ -163,11 +165,44 @@ User = get_user_model()
 class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = User
+        skip_postgeneration_save = True
 
     email = factory.Sequence(lambda n: f"user{n}@example.com")
     is_active = True
-    password = factory.PostGenerationMethodCall("set_password", "password")
+    # Hash at create time (no post-generation hook / extra save).
+    password = factory.django.Password("password")
 '''
+
+
+def detect_viewset_allows_anonymous(views_source: str, viewset_class: str) -> bool:
+    """Return True if ``viewset_class`` looks like it uses AllowAny."""
+    if viewset_class not in views_source or "AllowAny" not in views_source:
+        return False
+    # Narrow to the class body: from class line until next top-level class or EOF.
+    pattern = rf"class {re.escape(viewset_class)}\b[\s\S]*?(?=\nclass |\Z)"
+    match = re.search(pattern, views_source)
+    if not match:
+        return False
+    body = match.group(0)
+    return "permission_classes" in body and "AllowAny" in body
+
+
+def _owner_factory_kw(info: ModelFieldInfo) -> str:
+    """Return ``author=user``-style kwargs when a User FK is present."""
+    for name, rel in info.relations.items():
+        if rel.kind == "m2m":
+            continue
+        to = rel.to or ""
+        _, rel_model = resolve_related_app_and_model(to if to else name, default_app="")
+        is_user = (
+            rel_model in {"User", "AbstractUser"}
+            or to.endswith(".User")
+            or to in {"settings.AUTH_USER_MODEL", "AUTH_USER_MODEL"}
+            or "AUTH_USER_MODEL" in to
+        )
+        if is_user:
+            return f"{name}=user"
+    return ""
 
 
 def build_api_test_source(
@@ -175,6 +210,8 @@ def build_api_test_source(
     app_name: str,
     model_name: str,
     skip_tenant: bool,
+    anonymous_list_ok: bool = False,
+    owner_kw: str = "",
 ) -> str:
     snake = pascal_to_snake(model_name)
     stem = factory_module_stem(app_name, model_name)
@@ -182,6 +219,23 @@ def build_api_test_source(
     skip_deco = (
         '@pytest.mark.skip(reason="tenant setup required")\n' if skip_tenant else ""
     )
+    factory_call = f"{factory_name}({owner_kw})" if owner_kw else f"{factory_name}()"
+    if anonymous_list_ok:
+        list_anon = f'''{skip_deco}@pytest.mark.django_db
+def test_list_anonymous_ok(api_client) -> None:
+    {factory_name}()
+    url = reverse("{snake}-list")
+    response = api_client.get(url)
+    assert response.status_code == status.HTTP_200_OK
+'''
+    else:
+        list_anon = f'''{skip_deco}@pytest.mark.django_db
+def test_list_requires_auth(api_client) -> None:
+    url = reverse("{snake}-list")
+    response = api_client.get(url)
+    assert response.status_code in {{status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN}}
+'''
+    auth_args = "auth_client, user" if owner_kw else "auth_client"
     return f'''"""API smoke tests for {app_name}.{model_name}."""
 
 from __future__ import annotations
@@ -193,16 +247,11 @@ from rest_framework import status
 from tests.factories.{stem} import {factory_name}
 
 
-{skip_deco}@pytest.mark.django_db
-def test_list_requires_auth(api_client) -> None:
-    url = reverse("{snake}-list")
-    response = api_client.get(url)
-    assert response.status_code in {{status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN}}
-
+{list_anon}
 
 {skip_deco}@pytest.mark.django_db
-def test_list_authenticated(auth_client) -> None:
-    {factory_name}()
+def test_list_authenticated({auth_args}) -> None:
+    {factory_call}
     response = auth_client.get(reverse("{snake}-list"))
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -210,8 +259,8 @@ def test_list_authenticated(auth_client) -> None:
 
 
 {skip_deco}@pytest.mark.django_db
-def test_retrieve_authenticated(auth_client) -> None:
-    obj = {factory_name}()
+def test_retrieve_authenticated({auth_args}) -> None:
+    obj = {factory_call}
     response = auth_client.get(reverse("{snake}-detail", kwargs={{"pk": obj.pk}}))
     assert response.status_code == status.HTTP_200_OK
 '''
@@ -358,18 +407,22 @@ def write_tests(
 
     skip_tenant = use_multitenancy and info.has_tenant_aware
     if has_viewset:
+        views_src = views_path.read_text(encoding="utf-8")
+        anonymous_ok = detect_viewset_allows_anonymous(
+            views_src, f"{options.model_name}ViewSet"
+        )
         api_path.write_text(
             build_api_test_source(
                 app_name=options.app_name,
                 model_name=options.model_name,
                 skip_tenant=skip_tenant,
+                anonymous_list_ok=anonymous_ok,
+                owner_kw=_owner_factory_kw(info),
             ),
             encoding="utf-8",
         )
+        format_written_python(api_path)
         written.append(api_path)
-        if model_path.exists() and options.force:
-            # leave model file alone
-            pass
     else:
         model_path.write_text(
             build_model_test_source(
@@ -378,7 +431,9 @@ def write_tests(
             ),
             encoding="utf-8",
         )
+        format_written_python(model_path)
         written.append(model_path)
 
+    format_written_python(factory_path)
     ensure_test_fixtures(tests_dir / "conftest.py")
     return written

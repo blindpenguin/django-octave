@@ -38,7 +38,7 @@ uv run django-octave new myapi \
 
 ## What it writes
 
-A full project tree: `config/`, `apps/core`, `apps/users`, settings, pytest/Ruff/`uv` tooling, optional Docker Compose files.
+A full project tree: `config/`, `apps/core`, `apps/users`, settings, pytest/Ruff/`uv` tooling, empty `staticfiles/` for WhiteNoise, optional Docker Compose files. Local settings enable WhiteNoise finders so `runserver` / pytest work without an immediate `collectstatic`.
 
 ## Next steps
 

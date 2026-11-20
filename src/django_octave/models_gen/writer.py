@@ -7,6 +7,7 @@ from libcst import matchers as m
 
 from django_octave.fields.codegen import field_source, needs_uuid_import, str_field_name
 from django_octave.fields.parser import FieldSpec
+from django_octave.formatting import format_written_python
 
 
 class ModelExistsError(FileExistsError):
@@ -155,6 +156,17 @@ def write_model(
         fields=fields,
     )
     class_module = cst.parse_module(class_src)
-    new_body = list(module.body) + list(class_module.body)
-    updated = module.with_changes(body=new_body)
+    addition = list(class_module.body)
+    if module.body and addition:
+        first = addition[0]
+        if isinstance(first, cst.ClassDef):
+            addition[0] = first.with_changes(
+                leading_lines=[
+                    *first.leading_lines,
+                    cst.EmptyLine(),
+                    cst.EmptyLine(),
+                ]
+            )
+    updated = module.with_changes(body=[*module.body, *addition])
     path.write_text(updated.code, encoding="utf-8")
+    format_written_python(path)

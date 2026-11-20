@@ -110,3 +110,96 @@ def test_write_serializer_nested(tmp_path: Path) -> None:
     assert "author = AuthorNestedSerializer(read_only=True)" in text
     assert '"author_id"' in text
     assert "author" in text.split("read_only_fields")[1]
+    assert text.index("class AuthorNestedSerializer") < text.index(
+        "class PostSerializer"
+    )
+
+
+def test_nested_user_helper_before_existing_parent(tmp_path: Path) -> None:
+    """Reproduce support-desk order: parent exists, then nest users.User."""
+    apps = tmp_path / "apps"
+    tickets = apps / "tickets"
+    users = apps / "users"
+    tickets.mkdir(parents=True)
+    users.mkdir(parents=True)
+    (tickets / "models.py").write_text(
+        '''
+from django.db import models
+from apps.core.models import TimeStampedModel
+
+class Ticket(TimeStampedModel):
+    subject = models.CharField(max_length=200)
+    assignee = models.ForeignKey("users.User", on_delete=models.SET_NULL, null=True)
+''',
+        encoding="utf-8",
+    )
+    (users / "models.py").write_text(
+        '''
+from django.db import models
+
+class User(models.Model):
+    email = models.EmailField()
+''',
+        encoding="utf-8",
+    )
+    ser = tickets / "serializers.py"
+    ser.write_text(
+        '''"""Serializers for tickets."""
+
+from __future__ import annotations
+
+from rest_framework import serializers
+
+from apps.tickets.models import Ticket
+
+
+class TicketSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ticket
+        fields = ("id", "subject", "assignee")
+''',
+        encoding="utf-8",
+    )
+    write_serializer(
+        tickets,
+        options=SerializerOptions(
+            app_name="tickets",
+            model_name="Ticket",
+            nested=[NestedRef("assignee")],
+            force=True,
+        ),
+    )
+    text = ser.read_text(encoding="utf-8")
+    assert "class UserNestedSerializer" in text
+    assert "assignee = UserNestedSerializer(read_only=True)" in text
+    assert text.index("class UserNestedSerializer") < text.index(
+        "class TicketSerializer"
+    )
+
+
+def test_ensure_class_before_moves_helper(tmp_path: Path) -> None:
+    from django_octave.models_gen.cst_util import ensure_class_before
+
+    path = tmp_path / "serializers.py"
+    path.write_text(
+        """
+from rest_framework import serializers
+
+class TicketSerializer(serializers.ModelSerializer):
+    assignee = UserNestedSerializer(read_only=True)
+    class Meta:
+        model = object
+        fields = ()
+
+class UserNestedSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = object
+        fields = ()
+""",
+        encoding="utf-8",
+    )
+    assert ensure_class_before(path, "UserNestedSerializer", "TicketSerializer")
+    text = path.read_text(encoding="utf-8")
+    assert text.index("class UserNestedSerializer") < text.index(
+        "class TicketSerializer"
+    )

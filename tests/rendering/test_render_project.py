@@ -44,6 +44,14 @@ def test_render_sqlite_baseline(tmp_path: Path) -> None:
     assert "AUTH_USER_MODEL" in (target / "config" / "settings" / "base.py").read_text(
         encoding="utf-8"
     )
+    # WhiteNoise STATIC_ROOT present for a quiet first run.
+    assert (target / "staticfiles" / ".gitkeep").is_file()
+    gitignore = (target / ".gitignore").read_text(encoding="utf-8")
+    assert "staticfiles/*" in gitignore
+    assert "!staticfiles/.gitkeep" in gitignore
+    local = (target / "config" / "settings" / "local.py").read_text(encoding="utf-8")
+    assert "WHITENOISE_USE_FINDERS" in local
+    assert "StaticFilesStorage" in local
 
 
 def test_render_docker_and_multitenancy(tmp_path: Path) -> None:

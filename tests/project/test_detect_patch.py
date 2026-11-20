@@ -54,4 +54,18 @@ def test_patch_idempotent(tmp_path: Path) -> None:
     assert patch_urls(urls, "blog") is False
     text = urls.read_text(encoding="utf-8")
     assert "include" in text
-    assert 'api/blog/' in text
+    assert 'path("api/", include("apps.blog.urls"))' in text
+    assert 'api/blog/' not in text
+
+    # Legacy api/<app>/ mount still counts as wired (no double-add).
+    urls.write_text(
+        'from django.urls import include, path\n'
+        "urlpatterns = [\n"
+        '    path("api/shop/", include("apps.shop.urls")),\n'
+        "]\n",
+        encoding="utf-8",
+    )
+    assert patch_urls(urls, "shop") is False
+    assert 'path("api/shop/", include("apps.shop.urls"))' in urls.read_text(
+        encoding="utf-8"
+    )

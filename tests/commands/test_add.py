@@ -31,6 +31,7 @@ def test_add_help() -> None:
     result = runner.invoke(app, ["add", "--help"])
     assert result.exit_code == 0
     assert "--force" in result.stdout
+    assert "--model" in result.stdout
 
 
 def test_add_happy_path(tmp_path: Path) -> None:
@@ -46,10 +47,26 @@ def test_add_happy_path(tmp_path: Path) -> None:
     settings = (root / "config" / "settings" / "base.py").read_text(encoding="utf-8")
     assert '"apps.blog"' in settings
     urls = (root / "config" / "urls.py").read_text(encoding="utf-8")
-    assert "apps.blog.urls" in urls
+    assert 'path("api/", include("apps.blog.urls"))' in urls
     models = (app_dir / "models.py").read_text(encoding="utf-8")
     assert "TimeStampedModel" in models
     assert "class Blog" in models
+    assert 'router.register("blogs"' in (app_dir / "urls.py").read_text(encoding="utf-8")
+
+
+def test_add_with_explicit_model(tmp_path: Path) -> None:
+    root = _new_project(tmp_path)
+    result = runner.invoke(
+        app, ["add", "accounts", "--model", "Customer", "--path", str(root)]
+    )
+    assert result.exit_code == 0, result.output
+    models = (root / "apps" / "accounts" / "models.py").read_text(encoding="utf-8")
+    assert "class Customer" in models
+    assert "class Account" not in models
+    urls = (root / "apps" / "accounts" / "urls.py").read_text(encoding="utf-8")
+    assert 'router.register("customers"' in urls
+    assert 'basename="customer"' in urls
+    assert "CustomerViewSet" in urls
 
 
 def test_add_rejects_reserved(tmp_path: Path) -> None:

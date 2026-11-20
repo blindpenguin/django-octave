@@ -12,6 +12,7 @@ from django_octave.api_parts.viewset_gen import resolve_permission
 from django_octave.models_gen.cst_util import (
     add_to_import,
     class_exists,
+    coalesce_from_imports,
     method_exists,
     upsert_method,
 )
@@ -91,15 +92,19 @@ def normalize_methods(methods: list[str] | None, *, detail: bool) -> list[str]:
 
 
 def detect_viewset_tag(source: str, class_name: str) -> str | None:
-    """Return first Spectacular tag near the viewset class, if present."""
+    """Return Spectacular tag from the target viewset's own decorators.
+
+    Only searches between the previous top-level ``class`` and this class
+    line, using the **last** ``tags=[...]`` match (typically the viewset's
+    ``@extend_schema_view``), so earlier viewsets in the file cannot win.
+    """
     idx = source.find(f"class {class_name}")
     if idx < 0:
         return None
-    next_idx = source.find("\nclass ", idx + 1)
-    chunk_end = len(source) if next_idx < 0 else next_idx
-    pre = source[max(0, idx - 800) : chunk_end]
-    match = _TAG_RE.search(pre)
-    return match.group(1) if match else None
+    prev = source.rfind("\nclass ", 0, idx)
+    window = source[0 if prev < 0 else prev : idx]
+    matches = list(_TAG_RE.finditer(window))
+    return matches[-1].group(1) if matches else None
 
 
 def default_tag_for_viewset(viewset_class: str) -> str:
@@ -295,6 +300,8 @@ def write_action(
     except ModelWriteError:
         raise
 
+    cleaned = coalesce_from_imports(views_path.read_text(encoding="utf-8"))
+    views_path.write_text(cleaned, encoding="utf-8")
     return views_path
 
 
@@ -312,5 +319,5 @@ def action_url_hint(
     plural = pluralize(snake)
     segment = url_path or action_name
     if detail:
-        return f"/api/{app_name}/{plural}/{{pk}}/{segment}/"
-    return f"/api/{app_name}/{plural}/{segment}/"
+        return f"/api/{plural}/{{pk}}/{segment}/"
+    return f"/api/{plural}/{segment}/"

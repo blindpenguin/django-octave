@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from django_octave.fields.codegen import field_source, filterable_field_names
+from django_octave.fields.codegen import (
+    field_source,
+    filterable_field_names,
+    str_field_name,
+)
 from django_octave.fields.parser import (
     FieldParseError,
     parse_field,
@@ -89,3 +93,19 @@ def test_parse_fk_requires_to() -> None:
 def test_parse_bad_to() -> None:
     with pytest.raises(FieldParseError, match="Invalid to="):
         parse_field("author:fk:to=not-valid")
+
+
+def test_str_field_name_prefers_labels_over_text() -> None:
+    assert (
+        str_field_name(
+            parse_fields(["body:text", "note:char:max=120:blank"])
+        )
+        == "note"
+    )
+    assert (
+        str_field_name(parse_fields(["body:text", "subject:char:max=200"]))
+        == "subject"
+    )
+    assert str_field_name(parse_fields(["title:char", "body:text"])) == "title"
+    assert str_field_name(parse_fields(["body:text"])) == "body"
+    assert str_field_name(parse_fields(["n:int"])) is None

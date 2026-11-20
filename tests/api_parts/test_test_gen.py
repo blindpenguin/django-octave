@@ -12,6 +12,7 @@ from django_octave.api_parts.test_gen import (
     build_api_test_source,
     build_model_factory_source,
     build_model_test_source,
+    build_user_factory_source,
     ensure_test_fixtures,
     write_tests,
 )
@@ -119,3 +120,10 @@ def test_tenant_aware_flag() -> None:
     info = inspect_model_fields(TENANT, "Item")
     assert info.has_tenant_aware is True
     assert info.has_timestamps is True
+
+
+def test_build_user_factory_uses_django_password() -> None:
+    src = build_user_factory_source()
+    assert 'password = factory.django.Password("password")' in src
+    assert "skip_postgeneration_save = True" in src
+    assert "PostGenerationMethodCall(" not in src

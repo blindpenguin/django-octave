@@ -13,6 +13,7 @@ from django_octave.inspect.model_fields import (
 from django_octave.models_gen.cst_util import (
     add_to_import,
     class_exists,
+    ensure_class_before,
     ensure_import_lines,
     upsert_class,
 )
@@ -201,13 +202,22 @@ def _ensure_nested_helpers(
     app_dir: Path,
     *,
     parent_app: str,
+    parent_serializer: str,
     nested: list[NestedRef],
     info: ModelFieldInfo,
     force: bool,
 ) -> list[tuple[str, str]]:
-    """Create slim nested serializers; return ``(field, class_name)`` decls."""
+    """Create slim nested serializers; return ``(field, class_name)`` decls.
+
+    Helpers are inserted **before** ``parent_serializer`` when that class
+    already exists, so nested class names are defined before use.
+    """
     decls: list[tuple[str, str]] = []
     ser_path = app_dir / "serializers.py"
+    parent_exists = class_exists(
+        ser_path.read_text(encoding="utf-8"), parent_serializer
+    )
+    before = parent_serializer if parent_exists else None
 
     for ref in nested:
         rel = info.relations[ref.field_name]
@@ -250,6 +260,8 @@ def _ensure_nested_helpers(
 
         exists = class_exists(ser_path.read_text(encoding="utf-8"), class_name)
         if exists and not force:
+            if before:
+                ensure_class_before(ser_path, class_name, before)
             continue
         upsert_class(
             ser_path,
@@ -257,6 +269,7 @@ def _ensure_nested_helpers(
             nested_src,
             force=exists and force,
             header_imports=["from rest_framework import serializers\n"],
+            before=before,
         )
 
     return decls
@@ -302,6 +315,7 @@ def write_serializer(
     nested_decls = _ensure_nested_helpers(
         app_dir,
         parent_app=options.app_name,
+        parent_serializer=class_name,
         nested=options.nested,
         info=info,
         force=options.force,

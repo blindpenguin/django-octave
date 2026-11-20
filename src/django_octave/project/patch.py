@@ -44,15 +44,28 @@ def patch_installed_apps(settings_path: Path, dotted_app: str) -> bool:
     return True
 
 
+def _app_urls_already_included(text: str, app_name: str) -> bool:
+    """True if ``apps.<app>.urls`` is already in urlpatterns (legacy or shared)."""
+    include_mod = f"apps.{app_name}.urls"
+    if f'include("{include_mod}")' not in text and f"include('{include_mod}')" not in text:
+        return False
+    # Any include of this module counts (legacy api/<app>/ or shared api/).
+    return True
+
+
 def patch_urls(urls_path: Path, app_name: str) -> bool:
-    """Ensure ``api/<app_name>/`` include exists in urlpatterns.
+    """Ensure ``apps.<app>.urls`` is included under the shared ``api/`` prefix.
+
+    New includes use ``path("api/", include("apps.<app>.urls"))`` so router
+    plurals yield ``/api/<plural>/`` (not ``/api/<app>/<plural>/``).
+
+    Legacy mounts ``path("api/<app>/", …)`` still count as already wired
+    (idempotent; not auto-rewritten).
 
     Returns True if the file was modified.
     """
     text = urls_path.read_text(encoding="utf-8")
-    include_mod = f"apps.{app_name}.urls"
-    mount = f'"api/{app_name}/"'
-    if include_mod in text and mount in text:
+    if _app_urls_already_included(text, app_name):
         return False
 
     # Ensure include is imported from django.urls.
@@ -84,9 +97,7 @@ def patch_urls(urls_path: Path, app_name: str) -> bool:
         lines.insert(insert_at, "from django.urls import include, path\n")
         text = "".join(lines)
 
-    snippet = (
-        f'    path("api/{app_name}/", include("apps.{app_name}.urls")),\n'
-    )
+    snippet = f'    path("api/", include("apps.{app_name}.urls")),\n'
     marker = "urlpatterns = ["
     idx = text.find(marker)
     if idx == -1:

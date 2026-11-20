@@ -27,3 +27,5 @@ uv run django-octave add-action blog Post publish \
 ## What it changes
 
 Method on the viewset in `apps/<app>/views.py`. The router picks up new actions automatically — no `urls.py` edit.
+
+Spectacular tags default to the **target** viewset’s tag (or `--tag`). Printed route shapes look like `/api/<plural>/{pk}/<action>/` under the shared `api/` mount.

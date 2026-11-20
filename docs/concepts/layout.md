@@ -7,6 +7,7 @@ myproject/
 ├── manage.py
 ├── pyproject.toml
 ├── .env.example
+├── staticfiles/            # empty STATIC_ROOT (.gitkeep) for WhiteNoise
 ├── config/                 # Django project package
 │   ├── settings/           # base / local / prod (django-environ)
 │   ├── urls.py
@@ -27,6 +28,8 @@ myproject/
 | Domain code | Live under `apps.<name>` |
 | Shared bases | `apps.core` (e.g. `TimeStampedModel`) |
 | Settings / URLs | `config/` only |
+| API routes | Domain apps mount under shared `api/`; collections are `/api/<model_plural>/` |
+| Static (local) | Finders + WhiteNoise; prod still uses compressed manifest storage |
 | Services | Prefer `services.py` for writes; thin viewsets |
 
 ## Next
