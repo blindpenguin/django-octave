@@ -35,4 +35,15 @@ uv run --isolated --no-project --with dist/*.tar.gz scripts/smoke_dist.py
 
 ## Docs site
 
-Docs deploy from [`.github/workflows/docs.yml`](https://github.com/blindpenguin/django-octave/blob/master/.github/workflows/docs.yml) to GitHub Pages. One-time: repo **Settings → Pages → Source: GitHub Actions**.
+The public docs site tracks the **latest GitHub Release**, not `master`.
+
+| Event | What happens |
+|-------|----------------|
+| PR / push to `master` | `mkdocs build --strict` only (CI) |
+| GitHub Release published (`v*`) | Build from that tag → deploy GitHub Pages |
+| Manual `workflow_dispatch` | Rebuild/redeploy a **specific release tag** (input required; not `master`) |
+
+Workflow: [`.github/workflows/docs.yml`](https://github.com/blindpenguin/django-octave/blob/master/.github/workflows/docs.yml).  
+One-time: repo **Settings → Pages → Source: GitHub Actions**.
+
+Edit docs on `master` as usual; they go live on the **next** release (or a manual dispatch from the release tag).

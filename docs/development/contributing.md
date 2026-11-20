@@ -18,6 +18,8 @@ uv run mkdocs serve
 uv run mkdocs build --strict
 ```
 
+The **published** site (GitHub Pages) updates only when a **public release** is published — not on every `master` push. Keep docs in the same PR/commit as the feature so the next tag ships matching docs. See [Releases](releases.md#docs-site).
+
 !!! tip "Definition of Done"
     When you ship a new user-facing generator or flag, update the matching page under `docs/commands/` (and concepts if needed). Do not re-expand the README into a command catalog.
 
