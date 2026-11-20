@@ -54,12 +54,36 @@ class ViewSetOptions:
 
 
 def validate_permission(name: str) -> str:
+    """Validate a stock DRF permission name (allowlist only)."""
     if name not in PERMISSIONS:
         allowed = ", ".join(sorted(PERMISSIONS))
         raise ViewSetPermissionError(
             f"Unknown permission {name!r}. Allowed: {allowed}"
         )
     return name
+
+
+def resolve_permission(
+    app_dir: Path,
+    app_name: str,
+    name: str,
+) -> tuple[str, str]:
+    """Resolve permission to ``(import_module, symbol)``.
+
+    Stock allowlist first; otherwise a class defined in
+    ``apps.<app>/permissions.py``.
+    """
+    if name in PERMISSIONS:
+        return ("rest_framework.permissions", name)
+    perms = app_dir / "permissions.py"
+    if perms.is_file() and class_exists(perms.read_text(encoding="utf-8"), name):
+        return (f"apps.{app_name}.permissions", name)
+    allowed = ", ".join(sorted(PERMISSIONS))
+    raise ViewSetPermissionError(
+        f"Unknown permission {name!r}. Allowed stock: {allowed}. "
+        f"Or define {name} in apps.{app_name}.permissions "
+        f"(django-octave add-permission {app_name} {name})."
+    )
 
 
 def _validate_names(
@@ -136,14 +160,24 @@ class {model_name}ViewSet(viewsets.ModelViewSet):
 """
 
 
-def _views_header(app_name: str, model_name: str, permission: str) -> str:
+def _views_header(
+    app_name: str,
+    model_name: str,
+    *,
+    permission: str,
+    permission_module: str,
+) -> str:
+    if permission_module == "rest_framework.permissions":
+        perm_import = f"from rest_framework.permissions import {permission}"
+    else:
+        perm_import = f"from {permission_module} import {permission}"
     return f'''"""API views for {app_name}."""
 
 from __future__ import annotations
 
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import viewsets
-from rest_framework.permissions import {permission}
+{perm_import}
 
 from apps.{app_name}.models import {model_name}
 from apps.{app_name}.serializers import {model_name}Serializer
@@ -207,7 +241,9 @@ def write_viewset(
 
     Returns ``(views.py path, urls.py path)``.
     """
-    permission = validate_permission(options.permission)
+    perm_module, permission = resolve_permission(
+        app_dir, options.app_name, options.permission
+    )
     models_path = app_dir / "models.py"
     if info is None:
         info = inspect_model_fields_path(models_path, options.model_name)
@@ -237,10 +273,17 @@ def write_viewset(
         tag=tag,
     )
 
+    perm_import_line = f"from {perm_module} import {permission}\n"
     views_path = app_dir / "views.py"
     if not views_path.exists():
         views_path.write_text(
-            _views_header(options.app_name, options.model_name, permission) + class_src,
+            _views_header(
+                options.app_name,
+                options.model_name,
+                permission=permission,
+                permission_module=perm_module,
+            )
+            + class_src,
             encoding="utf-8",
         )
     else:
@@ -262,7 +305,7 @@ def write_viewset(
             [
                 "from drf_spectacular.utils import extend_schema, extend_schema_view\n",
                 "from rest_framework import viewsets\n",
-                f"from rest_framework.permissions import {permission}\n",
+                perm_import_line,
             ],
         )
         views_path.write_text(source, encoding="utf-8")
@@ -274,7 +317,7 @@ def write_viewset(
             header_imports=[
                 "from drf_spectacular.utils import extend_schema, extend_schema_view\n",
                 "from rest_framework import viewsets\n",
-                f"from rest_framework.permissions import {permission}\n",
+                perm_import_line,
             ],
         )
 

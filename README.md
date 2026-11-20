@@ -111,7 +111,59 @@ uv run django-octave add-viewset blog Post \
   --path /path/to/project
 ```
 
-Creates or refreshes `<Model>ViewSet` with Spectacular tags, filter/search/ordering, and router registration. If the serializer is missing, a default one is created automatically. Permissions: `IsAuthenticated` (default), `AllowAny`, `IsAdminUser`. `--force` replaces an existing viewset.
+Creates or refreshes `<Model>ViewSet` with Spectacular tags, filter/search/ordering, and router registration. If the serializer is missing, a default one is created automatically. Permissions: `IsAuthenticated` (default), `AllowAny`, `IsAdminUser`, or a custom class from `apps/<app>/permissions.py` (see add-permission). `--force` replaces an existing viewset.
+
+### Add a permission
+
+```bash
+uv run django-octave add-permission blog IsOwner --preset owner --owner-attr owner
+uv run django-octave add-permission blog IsStaffOrRead --preset staff_or_read
+uv run django-octave add-permission blog IsAuthOrRead --preset auth_or_read
+# Multitenancy projects only:
+uv run django-octave add-permission blog IsTenantMember --preset tenant_member
+```
+
+Writes `apps/<app>/permissions.py`. Presets: `owner` (object owner check; fail closed if attribute missing), `staff_or_read`, `auth_or_read`, `tenant_member` (requires `--multitenancy` project). Wire onto an existing viewset:
+
+```bash
+uv run django-octave add-permission blog IsOwner --viewset Post
+uv run django-octave add-permission blog IsOwner --viewset PostViewSet --append
+```
+
+Or regenerate the viewset with the custom class:
+
+```bash
+uv run django-octave add-viewset blog Post --permission IsOwner --force
+```
+
+`--force` replaces an existing permission class.
+
+### Add a custom viewset action
+
+```bash
+uv run django-octave add-action blog Post publish
+uv run django-octave add-action blog Post recent --list --methods get
+uv run django-octave add-action blog Post publish \
+  --permission IsOwner \
+  --url-path publish-now \
+  --force
+```
+
+Injects an `@action` stub onto an existing `<Model>ViewSet` in `views.py`. Default is a **detail** action (`POST …/{pk}/publish/`) that calls `self.get_object()`. Use `--list` for a collection route. Optional `--methods`, `--url-path`, `--url-name`, `--permission`, `--serializer` (must already exist), and `--tag`. The router picks up new actions automatically — no `urls.py` edit. `--force` replaces an existing method of the same name.
+
+### Add / refine ModelAdmin
+
+```bash
+uv run django-octave add-admin blog Post --force
+uv run django-octave add-admin blog Post \
+  --list-display id,title,published \
+  --search title \
+  --filter published \
+  --ordering -created_at \
+  --force
+```
+
+Creates or refreshes `<Model>Admin` in `apps/<app>/admin.py` from inspected model fields: capped `list_display` (skips Text/JSON/file/M2M by default), `search_fields`, `list_filter`, `list_select_related` for FKs in the display list, and `date_hierarchy = "created_at"` when the model uses TimeStamped/TenantAware bases. Use `--no-date-hierarchy` to omit that. Overrides replace heuristics after validating field names. `--force` replaces an existing admin class (including the thin stub from `add-model`).
 
 ## Requirements
 

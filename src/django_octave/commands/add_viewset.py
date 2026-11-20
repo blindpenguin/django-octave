@@ -49,7 +49,10 @@ def add_viewset_cmd(
         str,
         typer.Option(
             "--permission",
-            help="Permission class: IsAuthenticated, AllowAny, or IsAdminUser.",
+            help=(
+                "Permission class: IsAuthenticated, AllowAny, IsAdminUser, "
+                "or a class in apps.<app>.permissions."
+            ),
         ),
     ] = "IsAuthenticated",
     filter_fields: Annotated[

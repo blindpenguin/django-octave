@@ -5,14 +5,17 @@ Pick items and open a Spec Workflow spec before implementing.
 
 ## Already shipped
 
-| Command | Role |
-|---------|------|
-| `new` | Kickstart project (DRF, Spectacular, JWT, DB, optional Docker/tenancy) |
-| `add` | Domain app + API stubs |
-| `add-model` | Model + field DSL + stub sync |
-| `add-serializer` | ModelSerializer field control |
-| `add-viewset` | ModelViewSet + router; auto-serializer |
-| GitHub Release CI | Tag → build → smoke → GitHub Release assets |
+| Item | Role | Spec |
+|------|------|------|
+| `new` | Kickstart project (DRF, Spectacular, JWT, DB, optional Docker/tenancy) | `project-kickstart` |
+| `add` | Domain app + API stubs | `add-app` |
+| `add-model` | Model + field DSL + stub sync (incl. FK/O2O/M2M) | `add-model` |
+| `add-serializer` | ModelSerializer field control; PK or `--nested` relations | `add-api-parts`, `related-serializers` |
+| `add-viewset` | ModelViewSet + router; auto-serializer; stock/local permissions | `add-api-parts` |
+| `add-permission` | Local `BasePermission` presets + optional viewset wire | `add-permission` |
+| `add-action` | Inject DRF `@action` (detail/list) onto existing viewset | `add-action` |
+| `add-admin` | Refine ModelAdmin (display/search/filter/select_related) | `add-admin` |
+| GitHub Release CI | Tag → build → smoke → GitHub Release assets | `github-release-ci` |
 
 ## Planned: Vue + Nuxt UI frontend scaffolding
 
@@ -42,38 +45,33 @@ Official Vue install path: [@nuxt/ui Vue installation](https://ui.nuxt.com/docs/
 
 Suggested: `vue-nuxt-ui-frontend` (kebab-case).
 
-## Suggested next work (backend / generator)
+## Suggested next work
 
 ### Generators (`add-*` family)
 
-1. **`add-action`** — custom `@action` on an existing viewset  
-2. **`add-admin`** — regenerate/refine ModelAdmin (`list_display`, search, filters)  
-3. **`add-test`** — pytest + factory stubs for a model/viewset  
-4. **`add-permission`** — project-local permission class + wire into a viewset  
-5. **Nested/related serializers** — **Done:** spec `related-serializers` (FK/O2O/M2M DSL + PK/`--nested` modes)
+1. **`add-test`** — pytest + factory stubs for a model/viewset  
 
 ### Kickstart / project quality
 
-6. **Hardening pack** — DRF throttling / rate limiting; tighten security defaults where needed  
-7. **Observability** — optional Sentry wiring (steering “Potential Enhancements”)  
-8. **Health/readiness endpoints** — simple ops routes in `apps.core`  
-9. **CI for generated projects** — GitHub Actions (pytest/ruff) template when opted in  
+2. **Hardening pack** — DRF throttling / rate limiting; tighten security defaults where needed  
+3. **Observability** — optional Sentry wiring (steering “Potential Enhancements”)  
+4. **Health/readiness endpoints** — simple ops routes in `apps.core`  
+5. **CI for generated projects** — GitHub Actions (pytest/ruff) template when opted in  
 
 ### Generator DX
 
-10. **`check` / `doctor`** — validate an octave project (layout, `INSTALLED_APPS`, missing stubs)  
-11. **`upgrade-templates`** — refresh generated files from newer octave versions (diff-based / careful)  
-12. **PyPI Trusted Publishing** — follow-on to GitHub Release CI  
+6. **`check` / `doctor`** — validate an octave project (layout, `INSTALLED_APPS`, missing stubs)  
+7. **`upgrade-templates`** — refresh generated files from newer octave versions (diff-based / careful)  
+8. **PyPI Trusted Publishing** — follow-on to GitHub Release CI  
 
 ## Suggested priority
 
-1. ~~`related-serializers`~~ (shipped)  
-2. `add-permission` → `add-action`  
-3. `add-admin` / `add-test`  
-4. Vue + Nuxt UI frontend scaffolding  
-5. `doctor` / `check` · Sentry / hardening  
+1. **`add-test`** (last backend `add-*` on the list)  
+2. Vue + Nuxt UI frontend scaffolding (`vue-nuxt-ui-frontend`)  
+3. `doctor` / `check` · hardening · Sentry / health  
+4. Generated-project CI · PyPI Trusted Publishing · `upgrade-templates`  
 
-Also remind: Spec dashboard via `./scripts/spec-dashboard.sh` when approving.
+Approvals: `./scripts/spec-dashboard.sh` → Spec Workflow dashboard.
 
 ## Explicit non-goals (still)
 
@@ -81,7 +79,7 @@ Also remind: Spec dashboard via `./scripts/spec-dashboard.sh` when approving.
 - GraphQL  
 - Admin UI themes  
 - Schema-based multitenancy packages  
-- Adding multitenancy to an existing project  
+- Adding multitenancy to an already-generated project  
 - Full Nuxt as the frontend host  
 - React / non-Vue SPA frameworks  
 - Celery as a required default  
@@ -90,4 +88,4 @@ Also remind: Spec dashboard via `./scripts/spec-dashboard.sh` when approving.
 
 1. Choose one item (or a tight pair).  
 2. Create a Spec Workflow spec (`requirements` → `design` → `tasks`).  
-3. Implement via MCP tasks; mark items here done or link the spec when useful.
+3. Implement via MCP tasks; move finished items into **Already shipped** and refresh priority.

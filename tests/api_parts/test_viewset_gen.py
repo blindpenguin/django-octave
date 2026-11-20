@@ -12,6 +12,7 @@ from django_octave.api_parts.viewset_gen import (
     ViewSetOptions,
     ViewSetPermissionError,
     build_viewset_class,
+    resolve_permission,
     resolve_viewset_lists,
     validate_permission,
     write_viewset,
@@ -33,6 +34,23 @@ def test_validate_permission() -> None:
     assert validate_permission("AllowAny") == "AllowAny"
     with pytest.raises(ViewSetPermissionError):
         validate_permission("IsOwner")
+
+
+def test_resolve_permission_stock_and_local(tmp_path: Path) -> None:
+    mod, name = resolve_permission(tmp_path, "blog", "IsAuthenticated")
+    assert mod == "rest_framework.permissions"
+    assert name == "IsAuthenticated"
+
+    with pytest.raises(ViewSetPermissionError, match="Unknown permission"):
+        resolve_permission(tmp_path, "blog", "IsOwner")
+
+    (tmp_path / "permissions.py").write_text(
+        "class IsOwner:\n    pass\n",
+        encoding="utf-8",
+    )
+    mod, name = resolve_permission(tmp_path, "blog", "IsOwner")
+    assert mod == "apps.blog.permissions"
+    assert name == "IsOwner"
 
 
 def test_resolve_defaults() -> None:
