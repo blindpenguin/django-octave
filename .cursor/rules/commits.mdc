@@ -1,0 +1,48 @@
+---
+description: Conventional Commits for changelog-friendly history
+alwaysApply: true
+---
+
+# Commits
+
+Use **[Conventional Commits](https://www.conventionalcommits.org/)** so `scripts/release-notes.py` can build GitHub Release notes.
+
+## Format
+
+```text
+type(scope): short imperative summary
+
+Optional body: why, not a file dump.
+```
+
+- **Subject**: ≤72 chars, imperative, no trailing period
+- **type** (required): `feat` | `fix` | `docs` | `refactor` | `test` | `chore` | `ci` | `perf`
+- **scope** (optional): area touched — e.g. `add`, `add-model`, `celery`, `docs`, `release`, `serializers`
+- **Breaking**: `feat(api)!: …` or a footer line `BREAKING CHANGE: …`
+
+## Types → release notes
+
+| type | Appears as |
+|------|------------|
+| `feat` | Features |
+| `fix` | Fixes |
+| `docs` | Documentation |
+| `perf` | Performance |
+| others | skip in user-facing notes (still commit normally) |
+
+Version bumps: `chore(release): 0.2.3` only (no feature narrative in that commit).
+
+## Examples
+
+```text
+feat(add): support --model for starter class name
+fix(serializers): insert nested helpers before parent class
+docs(layout): document shared api/ mount paths
+chore(release): 0.2.3
+```
+
+## Do not
+
+- Vague subjects: `update`, `fixes`, `wip`, `Release 0.2.2: …` as a grab-bag
+- Stack unrelated features in one commit when they should be separate changelog entries
+- Skip the type prefix — plain prose breaks release-note extraction

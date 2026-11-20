@@ -32,6 +32,29 @@ Non-trivial features go through Spec Workflow (requirements → design → tasks
 
 Artifacts live under `.spec-workflow/` (not end-user docs).
 
+## Commits
+
+Use [Conventional Commits](https://www.conventionalcommits.org/) so release notes stay useful:
+
+```text
+feat(add): support --model for starter class name
+fix(serializers): insert nested helpers before parent class
+docs(layout): document shared api/ mount paths
+chore(release): 0.2.3
+```
+
+| type | Use for |
+|------|---------|
+| `feat` | User-facing capability |
+| `fix` | Bug fix |
+| `docs` | Documentation only |
+| `refactor` / `test` / `chore` / `ci` / `perf` | As named |
+
+Optional `(scope)`: `add`, `add-model`, `celery`, `docs`, …  
+Breaking: `feat(api)!: …` or footer `BREAKING CHANGE: …`.
+
+Cursor enforces this via `.cursor/rules/commits.mdc`. Preview notes: `python3 scripts/release-notes.py`.
+
 ## Layout
 
 - Generator package: `src/django_octave/`
