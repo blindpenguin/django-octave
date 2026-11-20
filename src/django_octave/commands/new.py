@@ -57,8 +57,16 @@ def new_project(
             help="Allow generating into a non-empty directory.",
         ),
     ] = False,
+    celery: Annotated[
+        bool,
+        typer.Option(
+            "--celery/--no-celery",
+            help="Wire Celery + Redis after project create (default: off).",
+        ),
+    ] = False,
 ) -> None:
     """Create a production-ready Django REST API project."""
+    from django_octave.celery_gen import CelerySetupError, setup_celery
     from django_octave.prompts.new_project import resolve_new_project_options
     from django_octave.rendering.context import ProjectContext
     from django_octave.rendering.summary import print_next_steps
@@ -81,5 +89,12 @@ def new_project(
     except ValueError as exc:
         err_console.print(f"[red]{exc}[/red]")
         raise typer.Exit(code=1) from exc
+
+    if celery:
+        try:
+            setup_celery(ctx.target_dir)
+        except (CelerySetupError, FileExistsError, ValueError) as exc:
+            err_console.print(f"[red]Celery setup failed: {exc}[/red]")
+            raise typer.Exit(code=1) from exc
 
     print_next_steps(ctx)

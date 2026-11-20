@@ -42,6 +42,7 @@ Other options:
 - `--database sqlite|postgres|mariadb` (default when prompted: sqlite)
 - `--docker` / `--no-docker`
 - `--multitenancy` / `--no-multitenancy`
+- `--celery` / `--no-celery` — wire Celery + Redis after create (default: off)
 - `--path DIR` — parent directory for the project
 - `--force` — allow generating into a non-empty directory
 
@@ -164,6 +165,51 @@ uv run django-octave add-admin blog Post \
 ```
 
 Creates or refreshes `<Model>Admin` in `apps/<app>/admin.py` from inspected model fields: capped `list_display` (skips Text/JSON/file/M2M by default), `search_fields`, `list_filter`, `list_select_related` for FKs in the display list, and `date_hierarchy = "created_at"` when the model uses TimeStamped/TenantAware bases. Use `--no-date-hierarchy` to omit that. Overrides replace heuristics after validating field names. `--force` replaces an existing admin class (including the thin stub from `add-model`).
+
+### Add tests (factory + pytest)
+
+```bash
+uv run django-octave add-test blog Post
+uv run django-octave add-test blog Post --force
+```
+
+Writes `tests/factories/<app>_<model>.py` (factory-boy), ensures `tests/factories/user.py` and `api_client` / `auth_client` fixtures in `tests/conftest.py`. If a `<Model>ViewSet` exists, also writes `tests/test_<app>_<model>_api.py` (auth deny, list, retrieve via `reverse("<snake>-list|detail")`). Without a viewset, writes a model smoke test instead. Tenant-aware models on multitenancy projects get `@pytest.mark.skip` on API stubs until tenant setup is wired. `--force` replaces the model’s factory/test files.
+
+```bash
+cd /path/to/project && uv run pytest
+```
+
+### Add Celery (background tasks)
+
+Opt-in — not required when creating a project:
+
+```bash
+uv run django-octave add-celery --path /path/to/project
+# or at create time:
+uv run django-octave new myapi -d sqlite --no-docker --no-multitenancy --celery
+```
+
+Writes `config/celery.py` (autodiscover + empty `beat_schedule`), loads the app from `config/__init__.py`, adds `CELERY_*` settings and Redis URL lines to `.env.example`, and appends `celery[redis]` to `pyproject.toml`. If `docker-compose.yml` exists, injects `redis` / `worker` / `beat` services (marker-refreshable with `--force`).
+
+Run workers (separate processes — do not use `worker --beat` in production):
+
+```bash
+uv sync
+uv run celery -A config worker -l INFO
+uv run celery -A config beat -l INFO
+```
+
+Under Compose, set broker URLs to `redis://redis:6379/0` (the injected services set this via `environment`).
+
+### Add a Celery task
+
+```bash
+uv run django-octave add-task blog send_digest --every 3600
+uv run django-octave add-task blog send_digest --crontab "0 8 * * *" --force
+uv run django-octave add-task blog send_digest --bind
+```
+
+Requires `add-celery` first. Creates `apps/<app>/tasks.py` with a `@shared_task` stub. `--every SECONDS` or `--crontab` (5 fields) merges into `config/celery.py` `beat_schedule`. `--force` replaces an existing task or schedule key.
 
 ## Requirements
 

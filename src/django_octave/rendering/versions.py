@@ -25,6 +25,7 @@ PYTEST_DJANGO = "pytest-django>=4.9,<5"
 FACTORY_BOY = "factory-boy>=3.3,<4"
 PYTEST_COV = "pytest-cov>=6,<8"
 RUFF = "ruff>=0.9,<1"
+CELERY = "celery[redis]>=5.4,<6"
 
 ALWAYS_ON_DEPENDENCIES: tuple[str, ...] = (
     DJANGO,

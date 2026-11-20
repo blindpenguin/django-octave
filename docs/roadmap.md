@@ -15,6 +15,8 @@ Pick items and open a Spec Workflow spec before implementing.
 | `add-permission` | Local `BasePermission` presets + optional viewset wire | `add-permission` |
 | `add-action` | Inject DRF `@action` (detail/list) onto existing viewset | `add-action` |
 | `add-admin` | Refine ModelAdmin (display/search/filter/select_related) | `add-admin` |
+| `add-test` | factory-boy + pytest API/model stubs | `add-test` |
+| `add-celery` / `add-task` | Opt-in Celery+Redis, Compose workers/Beat, `@shared_task` stubs | `add-celery` |
 | GitHub Release CI | Tag → build → smoke → GitHub Release assets | `github-release-ci` |
 
 ## Planned: Vue + Nuxt UI frontend scaffolding
@@ -47,9 +49,9 @@ Suggested: `vue-nuxt-ui-frontend` (kebab-case).
 
 ## Suggested next work
 
-### Generators (`add-*` family)
+### Frontend
 
-1. **`add-test`** — pytest + factory stubs for a model/viewset  
+1. Vue + Nuxt UI frontend scaffolding (`vue-nuxt-ui-frontend`)  
 
 ### Kickstart / project quality
 
@@ -66,10 +68,9 @@ Suggested: `vue-nuxt-ui-frontend` (kebab-case).
 
 ## Suggested priority
 
-1. **`add-test`** (last backend `add-*` on the list)  
-2. Vue + Nuxt UI frontend scaffolding (`vue-nuxt-ui-frontend`)  
-3. `doctor` / `check` · hardening · Sentry / health  
-4. Generated-project CI · PyPI Trusted Publishing · `upgrade-templates`  
+1. Vue + Nuxt UI frontend scaffolding (`vue-nuxt-ui-frontend`)  
+2. `doctor` / `check` · hardening · Sentry / health  
+3. Generated-project CI · PyPI Trusted Publishing · `upgrade-templates`  
 
 Approvals: `./scripts/spec-dashboard.sh` → Spec Workflow dashboard.
 
@@ -82,7 +83,7 @@ Approvals: `./scripts/spec-dashboard.sh` → Spec Workflow dashboard.
 - Adding multitenancy to an already-generated project  
 - Full Nuxt as the frontend host  
 - React / non-Vue SPA frameworks  
-- Celery as a required default  
+- Celery as a **required** default (optional `add-celery` is in scope)  
 
 ## How to use this list
 

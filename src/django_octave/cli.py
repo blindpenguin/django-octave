@@ -21,9 +21,12 @@ def _register_commands() -> None:
     from django_octave.commands import add as _add  # noqa: F401
     from django_octave.commands import add_action as _add_action  # noqa: F401
     from django_octave.commands import add_admin as _add_admin  # noqa: F401
+    from django_octave.commands import add_celery as _add_celery  # noqa: F401
     from django_octave.commands import add_model as _add_model  # noqa: F401
     from django_octave.commands import add_permission as _add_permission  # noqa: F401
     from django_octave.commands import add_serializer as _add_serializer  # noqa: F401
+    from django_octave.commands import add_task as _add_task  # noqa: F401
+    from django_octave.commands import add_test as _add_test  # noqa: F401
     from django_octave.commands import add_viewset as _add_viewset  # noqa: F401
     from django_octave.commands import new as _new  # noqa: F401
 

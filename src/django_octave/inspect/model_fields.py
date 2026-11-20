@@ -56,6 +56,9 @@ class ModelFieldInfo:
     has_timestamps: bool = False
     """True when bases include TimeStampedModel or TenantAwareModel."""
 
+    has_tenant_aware: bool = False
+    """True when bases include TenantAwareModel."""
+
     @property
     def concrete_names(self) -> list[str]:
         return list(self.fields.keys())
@@ -178,6 +181,7 @@ def _collect_from_class(node: cst.ClassDef) -> ModelFieldInfo:
                 bases.append(parts[-1])
 
     has_timestamps = any(b in _TIMESTAMP_BASES for b in bases)
+    has_tenant_aware = "TenantAwareModel" in bases
     fields: dict[str, str] = {}
     relations: dict[str, RelationInfo] = {}
 
@@ -205,6 +209,7 @@ def _collect_from_class(node: cst.ClassDef) -> ModelFieldInfo:
         fields=fields,
         relations=relations,
         has_timestamps=has_timestamps,
+        has_tenant_aware=has_tenant_aware,
     )
 
 
