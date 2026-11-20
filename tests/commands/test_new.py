@@ -23,13 +23,23 @@ def test_new_help_lists_flags() -> None:
     assert "--database" in result.stdout
     assert "--docker" in result.stdout
     assert "--multitenancy" in result.stdout
+    assert "--frontend" in result.stdout
+    assert "--register" in result.stdout
+    assert "--crud" in result.stdout
     assert "--force" in result.stdout
 
 
 def test_missing_name_noninteractive_exits_2() -> None:
     result = runner.invoke(
         app,
-        ["new", "-d", "sqlite", "--no-docker", "--no-multitenancy"],
+        [
+            "new",
+            "-d",
+            "sqlite",
+            "--no-docker",
+            "--no-multitenancy",
+            "--no-frontend",
+        ],
     )
     assert result.exit_code == 2
 
@@ -44,6 +54,7 @@ def test_new_generates_project(tmp_path: Path) -> None:
             "sqlite",
             "--no-docker",
             "--no-multitenancy",
+            "--no-frontend",
             "--path",
             str(tmp_path),
         ],
@@ -65,6 +76,7 @@ def test_new_refuses_non_empty(tmp_path: Path) -> None:
             "sqlite",
             "--no-docker",
             "--no-multitenancy",
+            "--no-frontend",
             "--path",
             str(tmp_path),
         ],

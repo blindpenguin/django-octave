@@ -1,0 +1,133 @@
+<script setup lang="ts">
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
+{% if has_fk %}
+import { ApiError, apiJson } from '../../api/client'
+import { type CrudRecord, useCrudResource, unwrapList } from '../../composables/useCrudResource'
+{% else %}
+import { ApiError } from '../../api/client'
+import { type CrudRecord, useCrudResource } from '../../composables/useCrudResource'
+{% endif %}
+
+const route = useRoute()
+const router = useRouter()
+const { retrieve, update } = useCrudResource('{{ api_collection }}')
+
+const id = computed(() => String(route.params.id))
+const values = reactive<CrudRecord>({
+{% for f in writable_fields %}
+  '{{ f.name }}': {% if f.kind == 'boolean' %}false{% elif f.kind == 'number' or f.kind == 'decimal' or f.kind == 'fk' %}null{% else %}''{% endif %},
+{% endfor %}
+})
+const error = ref('')
+const fieldErrors = ref<Record<string, string>>({})
+const loading = ref(true)
+const saving = ref(false)
+{% for f in writable_fields %}
+{% if f.kind == 'fk' %}
+const {{ f.name }}Options = ref<{ label: string; value: number | string }[]>([])
+{% endif %}
+{% endfor %}
+
+onMounted(async () => {
+{% for f in writable_fields %}
+{% if f.kind == 'fk' %}
+  try {
+    const data = await apiJson<unknown>('/api/{{ f.related_plural }}/')
+    {{ f.name }}Options.value = unwrapList(data).map((row) => ({
+      value: row.id as string | number,
+      // Prefer API `label` (str(instance)) when serializers expose it
+      label: String(row.label ?? row['{{ f.related_label_field }}'] ?? row.id),
+    }))
+  } catch {
+    /* ignore */
+  }
+{% endif %}
+{% endfor %}
+  try {
+    const item = await retrieve(id.value)
+{% for f in writable_fields %}
+    values['{{ f.name }}'] = item['{{ f.name }}'] as never
+{% endfor %}
+  } catch (e) {
+    if (e instanceof ApiError) {
+      error.value = e.message
+    } else {
+      error.value = e instanceof Error ? e.message : 'Failed to load'
+    }
+  } finally {
+    loading.value = false
+  }
+})
+
+async function onSubmit() {
+  error.value = ''
+  fieldErrors.value = {}
+  saving.value = true
+  try {
+    await update(id.value, { ...values })
+    await router.push({ name: '{{ model_plural }}-detail', params: { id: id.value } })
+  } catch (e) {
+    if (e instanceof ApiError) {
+      error.value = e.message
+      fieldErrors.value = e.fields
+    } else {
+      error.value = e instanceof Error ? e.message : 'Update failed'
+    }
+  } finally {
+    saving.value = false
+  }
+}
+</script>
+
+<template>
+  <div class="max-w-xl">
+    <h1 class="mb-4 text-2xl font-semibold text-highlighted">Edit {{ model_name }}</h1>
+    <UAlert v-if="error" color="error" :title="error" class="mb-4" />
+    <UCard>
+      <div v-if="loading" class="text-muted">Loading…</div>
+      <form v-else class="flex flex-col gap-4" @submit.prevent="onSubmit">
+{% for f in writable_fields %}
+        <UFormField
+          :label="'{{ f.label }}'"
+          :name="'{{ f.name }}'"
+          :error="fieldErrors['{{ f.name }}']"
+          {% if f.required %}required{% endif %}
+        >
+{% if f.kind == 'boolean' %}
+          <UCheckbox v-model="values['{{ f.name }}']" />
+{% elif f.kind == 'text' %}
+          <UTextarea v-model="values['{{ f.name }}']" {% if f.required %}required{% endif %} />
+{% elif f.kind == 'fk' %}
+          <USelect
+            v-model="values['{{ f.name }}']"
+            :items="{{ f.name }}Options"
+            value-key="value"
+            label-key="label"
+            placeholder="Select…"
+            {% if f.required %}required{% endif %}
+          />
+{% elif f.kind == 'number' or f.kind == 'decimal' %}
+          <UInput v-model="values['{{ f.name }}']" type="number" {% if f.required %}required{% endif %} />
+{% elif f.kind == 'email' %}
+          <UInput v-model="values['{{ f.name }}']" type="email" {% if f.required %}required{% endif %} />
+{% elif f.kind == 'date' %}
+          <UInput v-model="values['{{ f.name }}']" type="date" {% if f.required %}required{% endif %} />
+{% elif f.kind == 'datetime' %}
+          <UInput v-model="values['{{ f.name }}']" type="datetime-local" {% if f.required %}required{% endif %} />
+{% else %}
+          <UInput v-model="values['{{ f.name }}']" type="text" {% if f.required %}required{% endif %} />
+{% endif %}
+        </UFormField>
+{% endfor %}
+        <div class="flex gap-2">
+          <UButton type="submit" :loading="saving">Save</UButton>
+          <UButton variant="ghost" :to="{ name: '{{ model_plural }}-detail', params: { id } }">
+            Cancel
+          </UButton>
+        </div>
+      </form>
+    </UCard>
+  </div>
+</template>

@@ -67,6 +67,8 @@ nav:
       - add-test: commands/add-test.md
       - add-celery: commands/add-celery.md
       - add-task: commands/add-task.md
+      - add-frontend: commands/add-frontend.md
+      - add-frontend-crud: commands/add-frontend-crud.md
   - Development:
       - Contributing: development/contributing.md
       - Releases: development/releases.md

@@ -21,6 +21,7 @@ def _project_with_app(tmp_path: Path, *, multitenancy: bool = False) -> Path:
         "--path",
         str(tmp_path),
         "--multitenancy" if multitenancy else "--no-multitenancy",
+        "--no-frontend",
     ]
     assert runner.invoke(app, args).exit_code == 0
     root = tmp_path / "proj"

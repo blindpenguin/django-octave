@@ -39,33 +39,15 @@ Current package: **0.2.2**. Pick items and open a Spec Workflow spec before impl
 
 Verified by generators-only scaffolds: recipe / support-desk (API green), multitenancy (`mt_demo`), Docker+Postgres (`docker_demo`).
 
-## Planned: Vue + Nuxt UI frontend scaffolding
+### Frontend
 
-**Product decision:** optional frontend is in scope. Stack is **Vue 3 + Vite + Vue Router + Nuxt UI** — the UI component library via `@nuxt/ui`’s Vite/Vue plugin. **Not** full Nuxt (no Nitro, no Nuxt file-based app host).
+| Item | Role | Spec |
+|------|------|------|
+| `add-frontend` / `new --frontend` | Vue 3 + Vite + Vue Router + Nuxt UI shell; JWT login; optional register; CORS; Compose when Docker | `vue-nuxt-ui-frontend` |
+| `add-frontend-crud` / `--crud` | Full CRUD Vue pages per ModelViewSet; FK label selects; bulk on add-frontend/new | `vue-frontend-crud` |
+| App shell upgrade | AuthLayout + Nuxt UI Dashboard AppLayout (sidebar/drawer, user menu, nested router, content-only pages) | `vue-app-shell` |
 
-Official Vue install path: [@nuxt/ui Vue installation](https://ui.nuxt.com/docs/getting-started/installation/vue) (`@nuxt/ui` + `tailwindcss`, `ui()` Vite plugin, `vue-plugin`, `UApp`).
-
-### Likely shape (to refine in a spec)
-
-| Topic | Working assumption |
-|-------|-------------------|
-| Layout | `frontend/` beside Django (`config/`, `apps/`) |
-| Entry | Opt-in at `new` (`--frontend` / prompt) and/or `django-octave add-frontend` for existing projects |
-| Auth | Talk to existing SimpleJWT endpoints; login page + token storage + API client |
-| CORS | Ensure generated Django CORS settings allow the Vite origin in dev |
-| Docker | Optional: serve/build frontend in Compose when Docker was chosen |
-| Depth (v1) | Shell app: router, Nuxt UI theme, auth against JWT, one authenticated home — not a full CRUD UI generator yet |
-
-### Out of frontend scope (unless product changes again)
-
-- Full Nuxt meta-framework  
-- React / other SPA frameworks  
-- GraphQL client  
-- Server-side rendering as a requirement for v1  
-
-### Spec name (when ready)
-
-Suggested: `vue-nuxt-ui-frontend` (kebab-case).
+**Not** full Nuxt. React / GraphQL / SSR remain out of scope. M2M editors are deferred.
 
 ## Suggested next work
 
@@ -74,29 +56,24 @@ Suggested: `vue-nuxt-ui-frontend` (kebab-case).
 1. **Tenant-aware factories & smoke tests** — wire `tenant=` (and membership) in factories; stop blanket-skipping API tests when tenancy is on  
 2. **Tenant test fixtures** — reusable `tenant` / `tenant_client` helpers in generated `conftest`  
 
-### Frontend
-
-3. Vue + Nuxt UI frontend scaffolding (`vue-nuxt-ui-frontend`)  
-
 ### Kickstart / project quality
 
-4. **Hardening pack** — DRF throttling / rate limiting; tighten security defaults where needed  
-5. **Observability** — optional Sentry wiring  
-6. **Health/readiness endpoints** — simple ops routes in `apps.core`  
-7. **CI for generated projects** — GitHub Actions (pytest/ruff) template when opted in  
+3. **Hardening pack** — DRF throttling / rate limiting; tighten security defaults where needed  
+4. **Observability** — optional Sentry wiring  
+5. **Health/readiness endpoints** — simple ops routes in `apps.core`  
+6. **CI for generated projects** — GitHub Actions (pytest/ruff) template when opted in  
 
 ### Generator DX
 
-8. **`check` / `doctor`** — validate an octave project (layout, `INSTALLED_APPS`, missing stubs)  
-9. **`upgrade-templates`** — refresh generated files from newer octave versions (diff-based / careful)  
-10. **PyPI Trusted Publishing** — follow-on to GitHub Release CI  
+7. **`check` / `doctor`** — validate an octave project (layout, `INSTALLED_APPS`, missing stubs)  
+8. **`upgrade-templates`** — refresh generated files from newer octave versions (diff-based / careful)  
+9. **PyPI Trusted Publishing** — follow-on to GitHub Release CI  
 
 ## Suggested priority
 
 1. Tenant-aware test/factory DX (close the multitenancy smoke gap)  
-2. Vue + Nuxt UI frontend scaffolding (`vue-nuxt-ui-frontend`)  
-3. `doctor` / `check` · hardening · Sentry / health  
-4. Generated-project CI · PyPI Trusted Publishing · `upgrade-templates`  
+2. `doctor` / `check` · hardening · Sentry / health  
+3. Generated-project CI · PyPI Trusted Publishing · `upgrade-templates`  
 
 Approvals: `./scripts/spec-dashboard.sh` → Spec Workflow dashboard.
 

@@ -28,6 +28,7 @@ def _new_project(tmp_path: Path, *, docker: bool = False) -> Path:
         "sqlite",
         "--docker" if docker else "--no-docker",
         "--no-multitenancy",
+        "--no-frontend",
         "--path",
         str(tmp_path),
     ]

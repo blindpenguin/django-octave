@@ -24,6 +24,9 @@ class NewProjectOptions:
     database: DatabaseChoice
     docker: bool
     multitenancy: bool
+    frontend: bool
+    register: bool
+    crud: bool
     force: bool
 
 
@@ -34,6 +37,9 @@ def resolve_new_project_options(
     database: DatabaseChoice | None,
     docker: bool | None,
     multitenancy: bool | None,
+    frontend: bool | None,
+    register: bool | None,
+    crud: bool | None,
     force: bool,
 ) -> NewProjectOptions:
     """Fill missing options via prompts when stdin is a TTY; else fail."""
@@ -76,6 +82,39 @@ def resolve_new_project_options(
         else:
             missing.append("--multitenancy / --no-multitenancy")
 
+    if frontend is None:
+        if interactive:
+            frontend = Confirm.ask(
+                "Include Vue + Nuxt UI frontend?",
+                default=False,
+                console=console,
+            )
+        else:
+            missing.append("--frontend / --no-frontend")
+
+    if frontend:
+        if register is None:
+            if interactive:
+                register = Confirm.ask(
+                    "Include registration (signup page + API)?",
+                    default=False,
+                    console=console,
+                )
+            else:
+                missing.append("--register / --no-register")
+        if crud is None:
+            if interactive:
+                crud = Confirm.ask(
+                    "Generate Vue CRUD pages for all ModelViewSets?",
+                    default=False,
+                    console=console,
+                )
+            else:
+                missing.append("--crud / --no-crud")
+    else:
+        register = False
+        crud = False
+
     if missing:
         joined = ", ".join(missing)
         console.print(
@@ -88,6 +127,9 @@ def resolve_new_project_options(
     assert database is not None
     assert docker is not None
     assert multitenancy is not None
+    assert frontend is not None
+    assert register is not None
+    assert crud is not None
 
     return NewProjectOptions(
         name=name,
@@ -95,5 +137,8 @@ def resolve_new_project_options(
         database=database,
         docker=docker,
         multitenancy=multitenancy,
+        frontend=frontend,
+        register=register,
+        crud=crud,
         force=force,
     )

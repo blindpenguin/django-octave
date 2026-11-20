@@ -22,6 +22,7 @@ def _new_project(tmp_path: Path, *, multitenancy: bool = False) -> Path:
         str(tmp_path),
     ]
     args.append("--multitenancy" if multitenancy else "--no-multitenancy")
+    args.append("--no-frontend")
     result = runner.invoke(app, args)
     assert result.exit_code == 0, result.output
     return tmp_path / "proj"

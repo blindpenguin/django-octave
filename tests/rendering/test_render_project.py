@@ -27,6 +27,9 @@ def _options(
         database=database,
         docker=docker,
         multitenancy=multitenancy,
+        frontend=False,
+        register=False,
+        crud=False,
         force=force,
     )
 

@@ -50,6 +50,27 @@ def new_project(
             help="Enable first-party row-level multitenancy.",
         ),
     ] = None,
+    frontend: Annotated[
+        bool | None,
+        typer.Option(
+            "--frontend/--no-frontend",
+            help="Scaffold Vue + Nuxt UI frontend after create.",
+        ),
+    ] = None,
+    register: Annotated[
+        bool | None,
+        typer.Option(
+            "--register/--no-register",
+            help="With --frontend: include signup page + registration API.",
+        ),
+    ] = None,
+    crud: Annotated[
+        bool | None,
+        typer.Option(
+            "--crud/--no-crud",
+            help="With --frontend: generate Vue CRUD for all ModelViewSets.",
+        ),
+    ] = None,
     force: Annotated[
         bool,
         typer.Option(
@@ -67,6 +88,15 @@ def new_project(
 ) -> None:
     """Create a production-ready Django REST API project."""
     from django_octave.celery_gen import CelerySetupError, setup_celery
+    from django_octave.frontend_gen import (
+        ComposeInjectError,
+        CrudSetupError,
+        DjangoPatchError,
+        FrontendSetupError,
+        generate_crud_all,
+        setup_frontend,
+    )
+    from django_octave.frontend_gen.crud_wire import CrudWireError
     from django_octave.prompts.new_project import resolve_new_project_options
     from django_octave.rendering.context import ProjectContext
     from django_octave.rendering.summary import print_next_steps
@@ -78,6 +108,9 @@ def new_project(
         database=database,
         docker=docker,
         multitenancy=multitenancy,
+        frontend=frontend,
+        register=register,
+        crud=crud,
         force=force,
     )
     ctx = ProjectContext.from_options(options)
@@ -89,6 +122,30 @@ def new_project(
     except ValueError as exc:
         err_console.print(f"[red]{exc}[/red]")
         raise typer.Exit(code=1) from exc
+
+    if options.frontend:
+        try:
+            setup_frontend(
+                ctx.target_dir,
+                include_register=options.register,
+                project_name=ctx.project_name,
+                project_slug_name=ctx.project_slug,
+            )
+        except (
+            FrontendSetupError,
+            DjangoPatchError,
+            ComposeInjectError,
+            FileExistsError,
+            ValueError,
+        ) as exc:
+            err_console.print(f"[red]Frontend setup failed: {exc}[/red]")
+            raise typer.Exit(code=1) from exc
+        if options.crud:
+            try:
+                generate_crud_all(ctx.target_dir, force=False)
+            except (CrudSetupError, CrudWireError, ValueError) as exc:
+                err_console.print(f"[red]CRUD generation failed: {exc}[/red]")
+                raise typer.Exit(code=1) from exc
 
     if celery:
         try:

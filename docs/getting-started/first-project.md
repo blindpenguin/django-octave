@@ -14,7 +14,8 @@ Flags (scriptable / CI):
 uv run django-octave new myapi \
   --database sqlite \
   --no-docker \
-  --no-multitenancy
+  --no-multitenancy \
+  --no-frontend
 ```
 
 Useful options:
@@ -24,6 +25,8 @@ Useful options:
 | `--database sqlite\|postgres\|mariadb` | Database backend |
 | `--docker` / `--no-docker` | Dockerfile + Compose |
 | `--multitenancy` / `--no-multitenancy` | Row-level tenancy (create-time only) |
+| `--frontend` / `--no-frontend` | Vue + Nuxt UI SPA under `frontend/` |
+| `--register` / `--no-register` | With frontend: signup page + API |
 | `--celery` / `--no-celery` | Wire Celery after create (default: off) |
 | `--path DIR` | Parent directory for the project |
 | `--force` | Allow a non-empty target directory |
@@ -59,3 +62,4 @@ See [project layout](../concepts/layout.md) and the [commands](../commands/add.m
 - [Docker](../concepts/docker.md)
 - [Multitenancy](../concepts/multitenancy.md)
 - [Celery](../concepts/celery.md)
+- [add-frontend](../commands/add-frontend.md) — Vue + Nuxt UI SPA

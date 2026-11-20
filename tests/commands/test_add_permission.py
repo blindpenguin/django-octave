@@ -23,6 +23,7 @@ def _project_with_post(tmp_path: Path, *, multitenancy: bool = False) -> Path:
                 "sqlite",
                 "--no-docker",
                 *mt,
+                "--no-frontend",
                 "--path",
                 str(tmp_path),
             ],

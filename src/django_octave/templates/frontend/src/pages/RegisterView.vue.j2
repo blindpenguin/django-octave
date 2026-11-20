@@ -1,0 +1,73 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+
+import { register } from '../auth/useAuth'
+
+const router = useRouter()
+
+const email = ref('')
+const password = ref('')
+const passwordConfirm = ref('')
+const error = ref('')
+const loading = ref(false)
+
+async function onSubmit() {
+  error.value = ''
+  if (password.value !== passwordConfirm.value) {
+    error.value = 'Passwords do not match'
+    return
+  }
+  loading.value = true
+  try {
+    await register(email.value, password.value, passwordConfirm.value)
+    await router.push({ name: 'home' })
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Registration failed'
+  } finally {
+    loading.value = false
+  }
+}
+</script>
+
+<template>
+  <UCard class="w-full max-w-md">
+    <template #header>
+      <h1 class="text-xl font-semibold">Create account</h1>
+      <p class="text-sm text-muted">{{ project_name }}</p>
+    </template>
+
+    <form class="flex flex-col gap-4" @submit.prevent="onSubmit">
+      <UFormField label="Email" name="email" required>
+        <UInput v-model="email" type="email" autocomplete="username" required />
+      </UFormField>
+      <UFormField label="Password" name="password" required>
+        <UInput
+          v-model="password"
+          type="password"
+          autocomplete="new-password"
+          required
+        />
+      </UFormField>
+      <UFormField label="Confirm password" name="password_confirm" required>
+        <UInput
+          v-model="passwordConfirm"
+          type="password"
+          autocomplete="new-password"
+          required
+        />
+      </UFormField>
+      <UAlert v-if="error" color="error" :title="error" />
+      <UButton type="submit" :loading="loading" block>
+        Register
+      </UButton>
+    </form>
+
+    <template #footer>
+      <p class="text-sm text-muted">
+        Already have an account?
+        <ULink to="/login" class="text-primary">Sign in</ULink>
+      </p>
+    </template>
+  </UCard>
+</template>

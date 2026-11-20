@@ -18,6 +18,7 @@ myproject/
 │   ├── core/               # always present — shared primitives
 │   ├── users/              # custom user model
 │   └── <domain>/           # your apps (django-octave add)
+├── frontend/               # optional — Vue + Nuxt UI SPA (add-frontend / --frontend)
 └── tests/                  # pytest-django
 ```
 
@@ -36,3 +37,4 @@ myproject/
 
 - [add](../commands/add.md) — scaffold a domain app
 - [add-model](../commands/add-model.md) — models + stub sync
+- [add-frontend](../commands/add-frontend.md) — optional Vue SPA

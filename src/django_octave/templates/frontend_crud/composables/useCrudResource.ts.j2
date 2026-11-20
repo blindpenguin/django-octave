@@ -1,0 +1,46 @@
+import { apiJson } from '../api/client'
+
+export type CrudRecord = Record<string, unknown>
+
+export function unwrapList(data: unknown): CrudRecord[] {
+  if (Array.isArray(data)) {
+    return data as CrudRecord[]
+  }
+  if (data && typeof data === 'object' && Array.isArray((data as { results?: unknown }).results)) {
+    return (data as { results: CrudRecord[] }).results
+  }
+  return []
+}
+
+export function useCrudResource(collectionPath: string) {
+  const base = collectionPath.replace(/\/?$/, '/')
+
+  async function list(): Promise<CrudRecord[]> {
+    const data = await apiJson<unknown>(base)
+    return unwrapList(data)
+  }
+
+  async function retrieve(id: string | number): Promise<CrudRecord> {
+    return apiJson<CrudRecord>(`${base}${id}/`)
+  }
+
+  async function create(body: CrudRecord): Promise<CrudRecord> {
+    return apiJson<CrudRecord>(base, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    })
+  }
+
+  async function update(id: string | number, body: CrudRecord): Promise<CrudRecord> {
+    return apiJson<CrudRecord>(`${base}${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    })
+  }
+
+  async function remove(id: string | number): Promise<void> {
+    await apiJson(`${base}${id}/`, { method: 'DELETE' })
+  }
+
+  return { list, retrieve, create, update, remove }
+}

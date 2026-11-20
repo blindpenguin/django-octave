@@ -111,6 +111,26 @@ def pascal_to_snake(name: str) -> str:
     return re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", chunks).lower()
 
 
+_LABEL_ACRONYMS = frozenset({"id", "pk", "url", "uuid", "api", "ip", "sku", "ui"})
+
+
+def humanize_field_label(name: str) -> str:
+    """Turn a field attr into a UI label (``prep_minutes`` → ``Prep Minutes``)."""
+    raw = name.strip().replace("-", "_")
+    if not raw:
+        return name
+    parts: list[str] = []
+    for part in raw.split("_"):
+        if not part:
+            continue
+        low = part.lower()
+        if low in _LABEL_ACRONYMS:
+            parts.append(low.upper())
+        else:
+            parts.append(low[:1].upper() + low[1:])
+    return " ".join(parts) if parts else name
+
+
 def pluralize(word: str) -> str:
     """Best-effort English pluralization for URL segments."""
     lower = word.lower()

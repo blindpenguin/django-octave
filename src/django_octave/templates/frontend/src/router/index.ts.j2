@@ -1,0 +1,66 @@
+import { createRouter, createWebHistory } from 'vue-router'
+
+import { isAuthenticated } from '../auth/tokens'
+import AuthLayout from '../layouts/AuthLayout.vue'
+import AppLayout from '../layouts/AppLayout.vue'
+import HomeView from '../pages/HomeView.vue'
+import LoginView from '../pages/LoginView.vue'
+{% if include_register %}
+import RegisterView from '../pages/RegisterView.vue'
+{% endif %}
+
+export const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    {
+      path: '/login',
+      component: AuthLayout,
+      meta: { guest: true },
+      children: [
+        {
+          path: '',
+          name: 'login',
+          component: LoginView,
+        },
+      ],
+    },
+{% if include_register %}
+    {
+      path: '/register',
+      component: AuthLayout,
+      meta: { guest: true },
+      children: [
+        {
+          path: '',
+          name: 'register',
+          component: RegisterView,
+        },
+      ],
+    },
+{% endif %}
+    {
+      path: '/',
+      component: AppLayout,
+      meta: { requiresAuth: true },
+      children: [
+        {
+          path: '',
+          name: 'home',
+          component: HomeView,
+        },
+        // --- django-octave crud routes begin ---
+        // --- django-octave crud routes end ---
+      ],
+    },
+  ],
+})
+
+router.beforeEach((to) => {
+  if (to.meta.requiresAuth && !isAuthenticated()) {
+    return { name: 'login', query: { redirect: to.fullPath } }
+  }
+  if (to.meta.guest && isAuthenticated()) {
+    return { name: 'home' }
+  }
+  return true
+})

@@ -1,0 +1,92 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+import type { DropdownMenuItem, NavigationMenuItem } from '@nuxt/ui'
+
+import { getUserEmail, logout } from '../auth/useAuth'
+
+const router = useRouter()
+
+const userEmail = computed(() => getUserEmail() || 'Account')
+
+const crudNavItems = [
+  // --- django-octave crud nav begin ---
+  // --- django-octave crud nav end ---
+] as NavigationMenuItem[]
+
+const navItems = computed<NavigationMenuItem[]>(() => [
+  { label: 'Home', icon: 'i-lucide-house', to: '/' },
+  ...crudNavItems,
+])
+
+const userMenuItems = computed<DropdownMenuItem[][]>(() => [
+  [
+    {
+      label: 'Log out',
+      icon: 'i-lucide-log-out',
+      onSelect() {
+        logout()
+        void router.push({ name: 'login' })
+      },
+    },
+  ],
+])
+</script>
+
+<template>
+  <UDashboardGroup unit="rem" class="h-dvh overflow-hidden">
+    <UDashboardSidebar collapsible>
+      <template #header="{ collapsed }">
+        <ULink
+          v-if="!collapsed"
+          to="/"
+          class="font-semibold text-highlighted truncate px-2"
+        >
+          {{ project_name }}
+        </ULink>
+        <UIcon
+          v-else
+          name="i-lucide-layout-dashboard"
+          class="size-5 text-primary mx-auto"
+        />
+      </template>
+      <template #default="{ collapsed }">
+        <UNavigationMenu
+          :collapsed="collapsed"
+          orientation="vertical"
+          :items="navItems"
+          tooltip
+        />
+      </template>
+    </UDashboardSidebar>
+
+    <UDashboardPanel>
+      <template #header>
+        <UDashboardNavbar title="{{ project_name }}">
+          <template #leading>
+            <UDashboardSidebarCollapse />
+          </template>
+          <template #title>
+            <ULink to="/" class="font-semibold text-highlighted">
+              {{ project_name }}
+            </ULink>
+          </template>
+          <template #right>
+            <UDropdownMenu :items="userMenuItems">
+              <UButton
+                color="neutral"
+                variant="ghost"
+                trailing-icon="i-lucide-chevron-down"
+              >
+                {% raw %}{{ userEmail }}{% endraw %}
+              </UButton>
+            </UDropdownMenu>
+          </template>
+        </UDashboardNavbar>
+      </template>
+      <template #body>
+        <RouterView />
+      </template>
+    </UDashboardPanel>
+  </UDashboardGroup>
+</template>

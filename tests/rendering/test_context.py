@@ -26,6 +26,9 @@ def test_context_sqlite_no_docker() -> None:
         database=DatabaseChoice.SQLITE,
         docker=False,
         multitenancy=False,
+        frontend=False,
+        register=False,
+        crud=False,
         force=False,
     )
     ctx = ProjectContext.from_options(options)
@@ -42,6 +45,9 @@ def test_context_postgres_docker() -> None:
         database=DatabaseChoice.POSTGRES,
         docker=True,
         multitenancy=True,
+        frontend=False,
+        register=False,
+        crud=False,
         force=False,
     )
     ctx = ProjectContext.from_options(options)

@@ -1,0 +1,63 @@
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+
+import { type CrudRecord, useCrudResource } from '../../composables/useCrudResource'
+
+const router = useRouter()
+const { list } = useCrudResource('{{ api_collection }}')
+
+const rows = ref<CrudRecord[]>([])
+const error = ref('')
+const loading = ref(true)
+
+const columns = [
+{% for f in list_fields %}
+  { accessorKey: '{{ f.name }}', header: '{{ f.label }}' },
+{% endfor %}
+  { accessorKey: '_actions', header: '' },
+]
+
+onMounted(async () => {
+  try {
+    rows.value = await list()
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Failed to load'
+  } finally {
+    loading.value = false
+  }
+})
+</script>
+
+<template>
+  <div>
+    <div class="mb-4 flex items-center justify-between gap-4">
+      <h1 class="text-2xl font-semibold text-highlighted">{{ model_name }}</h1>
+      <UButton :to="{ name: '{{ model_plural }}-create' }">New</UButton>
+    </div>
+    <UAlert v-if="error" color="error" :title="error" class="mb-4" />
+    <UCard>
+      <div v-if="loading" class="text-muted">Loading…</div>
+      <UTable v-else :data="rows" :columns="columns">
+        <template #_actions-cell="{ row }">
+          <div class="flex gap-2 justify-end">
+            <UButton
+              size="xs"
+              variant="ghost"
+              @click="router.push({ name: '{{ model_plural }}-detail', params: { id: String(row.original.id) } })"
+            >
+              View
+            </UButton>
+            <UButton
+              size="xs"
+              variant="ghost"
+              @click="router.push({ name: '{{ model_plural }}-edit', params: { id: String(row.original.id) } })"
+            >
+              Edit
+            </UButton>
+          </div>
+        </template>
+      </UTable>
+    </UCard>
+  </div>
+</template>

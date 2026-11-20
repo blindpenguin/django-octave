@@ -20,6 +20,9 @@ uv run django-octave new myapi \
   -d postgres \
   --docker \
   --no-multitenancy \
+  --frontend \
+  --no-register \
+  --no-crud \
   --celery \
   --path ~/Projects
 ```
@@ -32,6 +35,9 @@ uv run django-octave new myapi \
 | `--database` / `-d` | `sqlite`, `postgres`, or `mariadb` |
 | `--docker` / `--no-docker` | Include Docker artifacts |
 | `--multitenancy` / `--no-multitenancy` | Row-level tenancy (create-time only) |
+| `--frontend` / `--no-frontend` | Vue + Nuxt UI SPA under `frontend/` |
+| `--register` / `--no-register` | With frontend: signup page + API (prompted if omitted) |
+| `--crud` / `--no-crud` | With frontend: Vue CRUD for all ModelViewSets (prompted if omitted) |
 | `--celery` / `--no-celery` | Run Celery setup after create (default: **off**) |
 | `--path` | Parent directory (default: `.`) |
 | `--force` | Allow non-empty target directory |
@@ -44,3 +50,5 @@ A full project tree: `config/`, `apps/core`, `apps/users`, settings, pytest/Ruff
 
 - [First project](../getting-started/first-project.md)
 - [add](add.md) — domain app
+- [add-frontend](add-frontend.md) — Vue + Nuxt UI SPA (also via `--frontend`)
+- [add-frontend-crud](add-frontend-crud.md) — per-model CRUD (also via `--crud`)

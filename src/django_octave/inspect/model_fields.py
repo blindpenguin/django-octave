@@ -53,6 +53,12 @@ class ModelFieldInfo:
     relations: dict[str, RelationInfo] = field(default_factory=dict)
     """Relation fields keyed by attribute name."""
 
+    blank_fields: frozenset[str] = field(default_factory=frozenset)
+    """Fields declared with ``blank=True`` (optional on forms)."""
+
+    null_fields: frozenset[str] = field(default_factory=frozenset)
+    """Fields declared with ``null=True``."""
+
     has_timestamps: bool = False
     """True when bases include TimeStampedModel or TenantAwareModel."""
 
@@ -154,9 +160,18 @@ def _assign_targets(target: cst.BaseAssignTargetExpression) -> list[str]:
     return []
 
 
+def _call_kw_is_true(call: cst.Call, keyword: str) -> bool:
+    for arg in call.args:
+        if arg.keyword is not None and arg.keyword.value == keyword:
+            return isinstance(arg.value, cst.Name) and arg.value.value == "True"
+    return False
+
+
 def _record_field(
     fields: dict[str, str],
     relations: dict[str, RelationInfo],
+    blank_fields: set[str],
+    null_fields: set[str],
     name: str,
     field_type: str,
     call: cst.BaseExpression,
@@ -167,6 +182,11 @@ def _record_field(
     kind = _RELATION_KINDS.get(field_type)
     if kind is not None and isinstance(call, cst.Call):
         relations[name] = RelationInfo(kind=kind, to=_relation_to_from_call(call))
+    if isinstance(call, cst.Call):
+        if _call_kw_is_true(call, "blank"):
+            blank_fields.add(name)
+        if _call_kw_is_true(call, "null"):
+            null_fields.add(name)
 
 
 def _collect_from_class(node: cst.ClassDef) -> ModelFieldInfo:
@@ -184,6 +204,8 @@ def _collect_from_class(node: cst.ClassDef) -> ModelFieldInfo:
     has_tenant_aware = "TenantAwareModel" in bases
     fields: dict[str, str] = {}
     relations: dict[str, RelationInfo] = {}
+    blank_fields: set[str] = set()
+    null_fields: set[str] = set()
 
     for stmt in node.body.body:
         if not isinstance(stmt, cst.SimpleStatementLine):
@@ -194,20 +216,36 @@ def _collect_from_class(node: cst.ClassDef) -> ModelFieldInfo:
                 if field_type is None:
                     continue
                 for name in _assign_targets(small.targets[0].target):
-                    _record_field(fields, relations, name, field_type, small.value)
+                    _record_field(
+                        fields,
+                        relations,
+                        blank_fields,
+                        null_fields,
+                        name,
+                        field_type,
+                        small.value,
+                    )
             elif isinstance(small, cst.AnnAssign) and small.value is not None:
                 field_type = _field_type_from_call(small.value)
                 if field_type is None:
                     continue
                 if isinstance(small.target, cst.Name):
                     _record_field(
-                        fields, relations, small.target.value, field_type, small.value
+                        fields,
+                        relations,
+                        blank_fields,
+                        null_fields,
+                        small.target.value,
+                        field_type,
+                        small.value,
                     )
 
     return ModelFieldInfo(
         model_name=node.name.value,
         fields=fields,
         relations=relations,
+        blank_fields=frozenset(blank_fields),
+        null_fields=frozenset(null_fields),
         has_timestamps=has_timestamps,
         has_tenant_aware=has_tenant_aware,
     )

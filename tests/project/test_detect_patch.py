@@ -21,6 +21,9 @@ def _make_project(tmp_path: Path, *, multitenancy: bool = False) -> Path:
         database=DatabaseChoice.SQLITE,
         docker=False,
         multitenancy=multitenancy,
+        frontend=False,
+        register=False,
+        crud=False,
         force=False,
     )
     return render_project(ProjectContext.from_options(options))
