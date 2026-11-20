@@ -32,6 +32,50 @@ def test_add_model_help() -> None:
     result = runner.invoke(app, ["add-model", "--help"])
     assert result.exit_code == 0
     assert "--field" in result.stdout
+    assert "--fields" in result.stdout
+
+
+def test_add_model_compact_fields(tmp_path: Path) -> None:
+    root = _project_with_app(tmp_path)
+    result = runner.invoke(
+        app,
+        [
+            "add-model",
+            "blog",
+            "Post",
+            "--fields",
+            "title:char:max=200,published:bool:default=false",
+            "--path",
+            str(root),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    models = (root / "apps" / "blog" / "models.py").read_text(encoding="utf-8")
+    assert "title = models.CharField" in models
+    assert "published = models.BooleanField" in models
+
+
+def test_add_model_field_and_fields_combine(tmp_path: Path) -> None:
+    root = _project_with_app(tmp_path)
+    result = runner.invoke(
+        app,
+        [
+            "add-model",
+            "blog",
+            "Post",
+            "--field",
+            "title:char",
+            "--fields",
+            "published:bool,slug:slug",
+            "--path",
+            str(root),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    models = (root / "apps" / "blog" / "models.py").read_text(encoding="utf-8")
+    assert "title = models.CharField" in models
+    assert "published = models.BooleanField" in models
+    assert "slug = models.SlugField" in models
 
 
 def test_add_model_happy_path(tmp_path: Path) -> None:

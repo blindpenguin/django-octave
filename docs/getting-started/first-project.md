@@ -47,7 +47,7 @@ OpenAPI UI is available via drf-spectacular (typically `/api/schema/swagger-ui/`
 
 ```bash
 uv run django-octave add blog
-uv run django-octave add-model blog Post --field title:char:max=200
+uv run django-octave add-model blog Post --fields title:char:max=200,published:bool
 uv run django-octave add-viewset blog Post
 uv run django-octave add-test blog Post
 ```

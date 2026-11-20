@@ -5,7 +5,12 @@ from __future__ import annotations
 import pytest
 
 from django_octave.fields.codegen import field_source, filterable_field_names
-from django_octave.fields.parser import FieldParseError, parse_field, parse_fields
+from django_octave.fields.parser import (
+    FieldParseError,
+    parse_field,
+    parse_fields,
+    split_compact_fields,
+)
 
 
 def test_parse_char_defaults() -> None:
@@ -25,6 +30,19 @@ def test_parse_fields_default() -> None:
     fields = parse_fields([])
     assert len(fields) == 1
     assert fields[0].name == "name"
+
+
+def test_split_compact_fields() -> None:
+    parts = split_compact_fields(
+        "title:char:max=200,published:bool:default=false,author:fk:to=blog.Author"
+    )
+    assert parts == [
+        "title:char:max=200",
+        "published:bool:default=false",
+        "author:fk:to=blog.Author",
+    ]
+    assert split_compact_fields("") == []
+    assert [f.name for f in parse_fields(parts)] == ["title", "published", "author"]
 
 
 def test_bad_type() -> None:

@@ -195,6 +195,22 @@ def parse_field(raw: str) -> FieldSpec:
     )
 
 
+_COMPACT_FIELD_SPLIT_RE = re.compile(r",(?=[a-z][a-z0-9_]*:)")
+
+
+def split_compact_fields(raw: str) -> list[str]:
+    """Split a compact ``--fields`` string into individual field declarations.
+
+    Splits on commas that precede the next ``name:type`` token so values like
+    ``to=blog.Author`` stay intact. Commas inside option values that look like
+    another field start are not supported — use repeatable ``--field`` instead.
+    """
+    text = raw.strip()
+    if not text:
+        return []
+    return [part.strip() for part in _COMPACT_FIELD_SPLIT_RE.split(text) if part.strip()]
+
+
 def parse_fields(raw_fields: list[str] | None) -> list[FieldSpec]:
     """Parse fields; default to ``name:char:max=255`` when empty."""
     if not raw_fields:

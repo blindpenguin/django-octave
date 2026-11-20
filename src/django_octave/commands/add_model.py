@@ -10,7 +10,11 @@ from rich.console import Console
 from rich.markdown import Markdown
 
 from django_octave.cli import app
-from django_octave.fields.parser import FieldParseError, parse_fields
+from django_octave.fields.parser import (
+    FieldParseError,
+    parse_fields,
+    split_compact_fields,
+)
 from django_octave.models_gen.api_sync import sync_api_stubs
 from django_octave.models_gen.writer import (
     ModelExistsError,
@@ -47,6 +51,17 @@ def add_model_cmd(
             help="Field as name:type[:options]. Repeatable. Default: name:char:max=255.",
         ),
     ] = None,
+    fields: Annotated[
+        str | None,
+        typer.Option(
+            "--fields",
+            help=(
+                "Compact comma-separated field specs "
+                "(e.g. title:char:max=200,published:bool). "
+                "May be combined with repeatable --field."
+            ),
+        ),
+    ] = None,
     path: Annotated[
         Path,
         typer.Option("--path", help="Project root (default: current directory)."),
@@ -59,10 +74,14 @@ def add_model_cmd(
     """Add a Django model with fields and keep API stubs in sync."""
     from django_octave.prompts.add_model import resolve_add_model_options
 
+    merged_fields = list(field or [])
+    if fields is not None:
+        merged_fields.extend(split_compact_fields(fields))
+
     options = resolve_add_model_options(
         app=app_name,
         model=model_name,
-        fields=field,
+        fields=merged_fields,
         path=path,
         force=force,
     )
