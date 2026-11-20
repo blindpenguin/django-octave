@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from django_octave.api_parts.serializer_gen import (
+    NestedRef,
     SerializerExistsError,
     SerializerFieldError,
     SerializerOptions,
@@ -80,3 +81,32 @@ def test_write_serializer_create_and_refuse(tmp_path: Path) -> None:
     text = path.read_text(encoding="utf-8")
     assert '"id", "title",' in text
     assert text.count("class PostSerializer") == 1
+
+
+SAMPLE_REL = '''
+from django.db import models
+from apps.core.models import TimeStampedModel
+
+class Author(TimeStampedModel):
+    name = models.CharField(max_length=100)
+
+class Post(TimeStampedModel):
+    title = models.CharField(max_length=100)
+    author = models.ForeignKey("Author", on_delete=models.CASCADE)
+'''
+
+
+def test_write_serializer_nested(tmp_path: Path) -> None:
+    (tmp_path / "models.py").write_text(SAMPLE_REL, encoding="utf-8")
+    opts = SerializerOptions(
+        app_name="blog",
+        model_name="Post",
+        nested=[NestedRef("author")],
+        force=False,
+    )
+    path = write_serializer(tmp_path, options=opts)
+    text = path.read_text(encoding="utf-8")
+    assert "class AuthorNestedSerializer" in text
+    assert "author = AuthorNestedSerializer(read_only=True)" in text
+    assert '"author_id"' in text
+    assert "author" in text.split("read_only_fields")[1]

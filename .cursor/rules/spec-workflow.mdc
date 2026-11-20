@@ -28,7 +28,7 @@ Never write design before approved requirements. Never implement before approved
 
 ## Approvals
 
-- Approvals happen in the Spec Workflow dashboard (`npx -y @pimzino/spec-workflow-mcp@latest --dashboard` → http://localhost:5000) or the VS Code/Cursor extension
+- Approvals happen in the Spec Workflow dashboard (`./scripts/spec-dashboard.sh` → http://localhost:5000) or the VS Code/Cursor extension
 - If approval is pending, tell the user to review there; do not pretend approval happened
 - On change requests: revise the doc, re-request approval
 

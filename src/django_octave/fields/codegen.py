@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from django_octave.fields.parser import FieldSpec
+from django_octave.fields.parser import RELATION_TYPES, FieldSpec
 
 _TYPE_MAP: dict[str, str] = {
     "char": "models.CharField",
@@ -16,6 +16,20 @@ _TYPE_MAP: dict[str, str] = {
     "url": "models.URLField",
     "slug": "models.SlugField",
     "uuid": "models.UUIDField",
+}
+
+_ON_DELETE_MAP: dict[str, str] = {
+    "cascade": "models.CASCADE",
+    "protect": "models.PROTECT",
+    "set_null": "models.SET_NULL",
+    "set_default": "models.SET_DEFAULT",
+    "do_nothing": "models.DO_NOTHING",
+}
+
+_RELATION_CTOR: dict[str, str] = {
+    "fk": "models.ForeignKey",
+    "o2o": "models.OneToOneField",
+    "m2m": "models.ManyToManyField",
 }
 
 
@@ -37,9 +51,29 @@ def _default_expr(spec: FieldSpec) -> str | None:
     return raw
 
 
+def _related_to_literal(related_to: str) -> str:
+    return f'"{related_to}"'
+
+
 def field_source(spec: FieldSpec) -> str:
     """Return ``name = models.X(...)`` source line (no trailing newline)."""
-    args: list[str] = []
+    if spec.type_key in RELATION_TYPES:
+        assert spec.related_to is not None
+        args: list[str] = [_related_to_literal(spec.related_to)]
+        if spec.type_key in {"fk", "o2o"}:
+            assert spec.on_delete is not None
+            args.append(f"on_delete={_ON_DELETE_MAP[spec.on_delete]}")
+        if spec.null:
+            args.append("null=True")
+        if spec.blank:
+            args.append("blank=True")
+        if spec.unique:
+            args.append("unique=True")
+        joined = ", ".join(args)
+        ctor = _RELATION_CTOR[spec.type_key]
+        return f"{spec.name} = {ctor}({joined})"
+
+    args = []
     if spec.type_key == "char" and spec.max_length is not None:
         args.append(f"max_length={spec.max_length}")
     if spec.type_key == "slug" and spec.max_length is not None:
@@ -82,5 +116,5 @@ def str_field_name(fields: list[FieldSpec]) -> str | None:
 
 
 def filterable_field_names(fields: list[FieldSpec]) -> list[str]:
-    allowed = {"char", "bool", "int", "slug", "uuid", "email"}
+    allowed = {"char", "bool", "int", "slug", "uuid", "email", "fk", "o2o"}
     return [f.name for f in fields if f.type_key in allowed]

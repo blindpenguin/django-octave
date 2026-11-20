@@ -39,7 +39,7 @@
 1. **Opinionated over configurable**: Make the good default the only default unless a choice is essential (DB, Docker, multitenancy).
 2. **Production-ready from day one**: Local convenience must not omit prod essentials.
 3. **Solo-dev ergonomics**: Interactive when exploring; flags when scripting/CI.
-4. **Batteries for the API, not the frontend**: REST + OpenAPI focus; no GraphQL, no admin UI themes, no cloud deploy targets.
+4. **API-first, optional Vue client**: REST + OpenAPI remain the core; optional Vue SPA with Nuxt UI (Vite plugin — not full Nuxt). No GraphQL, no admin UI themes, no cloud deploy targets.
 5. **Own the critical path**: Multitenancy and `core` primitives are first-party so we control behavior and upgrades.
 
 ## Non-Goals (v1)
@@ -49,7 +49,8 @@
 - Admin UI themes / custom admin skins
 - Schema-based or third-party multitenancy packages (e.g. django-tenants)
 - Adding multitenancy to an already-generated project (create-time option only)
-- Frontend SPA scaffolding (React/Vue/etc.)
+- Full Nuxt (meta-framework / Nitro / file-based routing as the app host) — use Vue + Vite + Nuxt UI only
+- React / other SPA frameworks (Vue + Nuxt UI is the chosen frontend path)
 - Celery / async worker stacks as required defaults (may be considered later)
 
 ## Monitoring & Visibility
@@ -61,11 +62,13 @@
 ## Future Vision
 
 - Richer `django-octave add` generators (serializers, viewsets, spectacular extensions) on top of the kickstart.
+- **Optional Vue frontend**: Vite + Vue 3 + Vue Router + Nuxt UI (`@nuxt/ui` Vite plugin / Vue plugin — not the Nuxt meta-framework), wired to the JWT API.
 - Optional hardening packs (rate limiting, audit logging) as explicit later features.
 - Keep multitenancy and `core` as the extension points for “generic stuff required later.”
 
 ### Potential Enhancements
 
 - **Generators**: Model/API scaffolding beyond empty apps
+- **Frontend scaffolding**: `frontend/` (or similar) Vue + Nuxt UI SPA; CORS/JWT auth client; login shell
 - **Observability hooks**: Optional Sentry wiring (still no cloud deploy)
 - **Docs site**: Published examples of generated projects

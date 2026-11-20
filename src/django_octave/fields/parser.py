@@ -18,7 +18,16 @@ ALLOWED_TYPES: frozenset[str] = frozenset(
         "url",
         "slug",
         "uuid",
+        "fk",
+        "o2o",
+        "m2m",
     }
+)
+
+RELATION_TYPES: frozenset[str] = frozenset({"fk", "o2o", "m2m"})
+
+ON_DELETE_CHOICES: frozenset[str] = frozenset(
+    {"cascade", "protect", "set_null", "set_default", "do_nothing"}
 )
 
 RESERVED_FIELD_NAMES: frozenset[str] = frozenset(
@@ -26,6 +35,11 @@ RESERVED_FIELD_NAMES: frozenset[str] = frozenset(
 )
 
 _FIELD_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+_RELATED_TO_RE = re.compile(r"^([A-Z][A-Za-z0-9_]*)(\.[A-Z][A-Za-z0-9_]*)?$")
+# app_label.Model — app_label is snake_case
+_RELATED_TO_APP_RE = re.compile(
+    r"^([a-z][a-z0-9_]*)\.([A-Z][A-Za-z0-9_]*)$"
+)
 _TRUE = frozenset({"1", "true", "yes", "on"})
 _FALSE = frozenset({"0", "false", "no", "off"})
 
@@ -45,6 +59,11 @@ class FieldSpec:
     max_length: int | None = None
     max_digits: int | None = None
     decimal_places: int | None = None
+    related_to: str | None = None
+    """Target model: ``Author`` or ``blog.Author``."""
+
+    on_delete: str | None = None
+    """Normalized on_delete token for fk/o2o (e.g. ``cascade``)."""
 
 
 def _parse_bool(raw: str) -> bool:
@@ -54,6 +73,17 @@ def _parse_bool(raw: str) -> bool:
     if value in _FALSE:
         return False
     msg = f"Invalid boolean value {raw!r}"
+    raise FieldParseError(msg)
+
+
+def _validate_related_to(raw: str) -> str:
+    value = raw.strip()
+    if _RELATED_TO_APP_RE.match(value) or _RELATED_TO_RE.match(value):
+        return value
+    msg = (
+        f"Invalid to={value!r}; use Model or app_label.Model "
+        "(e.g. Author or blog.Author)"
+    )
     raise FieldParseError(msg)
 
 
@@ -78,10 +108,13 @@ def parse_field(raw: str) -> FieldSpec:
         raise FieldParseError(msg)
 
     null = blank = unique = False
+    blank_explicit = False
     default: str | None = None
     max_length: int | None = 255 if type_key == "char" else None
     max_digits: int | None = 10 if type_key == "decimal" else None
     decimal_places: int | None = 2 if type_key == "decimal" else None
+    related_to: str | None = None
+    on_delete: str | None = "cascade" if type_key in {"fk", "o2o"} else None
 
     for opt in option_parts:
         if not opt:
@@ -100,6 +133,7 @@ def parse_field(raw: str) -> FieldSpec:
                 null = flag
             elif key == "blank":
                 blank = flag
+                blank_explicit = True
             else:
                 unique = flag
         elif key == "default":
@@ -110,6 +144,21 @@ def parse_field(raw: str) -> FieldSpec:
             max_digits = int(value)
         elif key == "decimal_places":
             decimal_places = int(value)
+        elif key == "to":
+            if type_key not in RELATION_TYPES:
+                msg = f"Option to= is only valid for fk/o2o/m2m (got {type_key})"
+                raise FieldParseError(msg)
+            related_to = _validate_related_to(value)
+        elif key == "on_delete":
+            if type_key not in {"fk", "o2o"}:
+                msg = f"Option on_delete= is only valid for fk/o2o (got {type_key})"
+                raise FieldParseError(msg)
+            token = value.lower()
+            if token not in ON_DELETE_CHOICES:
+                allowed = ", ".join(sorted(ON_DELETE_CHOICES))
+                msg = f"Unknown on_delete {value!r}; allowed: {allowed}"
+                raise FieldParseError(msg)
+            on_delete = token
         else:
             msg = f"Unknown field option {key!r} in {raw!r}"
             raise FieldParseError(msg)
@@ -117,6 +166,19 @@ def parse_field(raw: str) -> FieldSpec:
     if type_key == "decimal" and (max_digits is None or decimal_places is None):
         msg = "decimal fields require max_digits and decimal_places"
         raise FieldParseError(msg)
+
+    if type_key in RELATION_TYPES and not related_to:
+        msg = f"{type_key} fields require to=Model or to=app.Model"
+        raise FieldParseError(msg)
+
+    if type_key == "m2m":
+        on_delete = None
+        if not blank_explicit:
+            blank = True
+
+    if on_delete == "set_null":
+        null = True
+        blank = True
 
     return FieldSpec(
         name=name,
@@ -128,6 +190,8 @@ def parse_field(raw: str) -> FieldSpec:
         max_length=max_length,
         max_digits=max_digits,
         decimal_places=decimal_places,
+        related_to=related_to,
+        on_delete=on_delete,
     )
 
 

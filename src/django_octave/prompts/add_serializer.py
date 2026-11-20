@@ -20,6 +20,7 @@ class AddSerializerPromptOptions:
     fields: str | None
     read_only: str | None
     include_id: bool
+    nested: list[str]
     path: Path
     force: bool
 
@@ -37,6 +38,7 @@ def resolve_add_serializer_options(
     fields: str | None,
     read_only: str | None,
     no_id: bool,
+    nested: list[str] | None,
     path: Path,
     force: bool,
 ) -> AddSerializerPromptOptions:
@@ -71,6 +73,7 @@ def resolve_add_serializer_options(
         fields=fields,
         read_only=read_only,
         include_id=include_id,
+        nested=list(nested or []),
         path=path,
         force=force,
     )

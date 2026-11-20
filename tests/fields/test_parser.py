@@ -35,3 +35,39 @@ def test_bad_type() -> None:
 def test_filterable() -> None:
     fields = [parse_field("title:char"), parse_field("body:text"), parse_field("n:int")]
     assert filterable_field_names(fields) == ["title", "n"]
+
+
+def test_parse_fk() -> None:
+    spec = parse_field("author:fk:to=Author")
+    assert spec.type_key == "fk"
+    assert spec.related_to == "Author"
+    assert spec.on_delete == "cascade"
+    src = field_source(spec)
+    assert "ForeignKey" in src
+    assert '"Author"' in src
+    assert "on_delete=models.CASCADE" in src
+
+
+def test_parse_fk_cross_app_set_null() -> None:
+    spec = parse_field("author:fk:to=blog.Author:on_delete=set_null")
+    assert spec.related_to == "blog.Author"
+    assert spec.on_delete == "set_null"
+    assert spec.null is True
+    assert "SET_NULL" in field_source(spec)
+
+
+def test_parse_m2m_blank_default() -> None:
+    spec = parse_field("tags:m2m:to=Tag")
+    assert spec.blank is True
+    assert "ManyToManyField" in field_source(spec)
+    assert "blank=True" in field_source(spec)
+
+
+def test_parse_fk_requires_to() -> None:
+    with pytest.raises(FieldParseError, match="to="):
+        parse_field("author:fk")
+
+
+def test_parse_bad_to() -> None:
+    with pytest.raises(FieldParseError, match="Invalid to="):
+        parse_field("author:fk:to=not-valid")

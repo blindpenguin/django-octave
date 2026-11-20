@@ -116,3 +116,80 @@ def test_add_serializer_missing_model(tmp_path: Path) -> None:
     )
     assert result.exit_code == 1
     assert "not found" in result.output.lower()
+
+
+def test_add_model_fk_and_nested_serializer(tmp_path: Path) -> None:
+    root = _project_with_post(tmp_path)
+    assert (
+        runner.invoke(
+            app,
+            [
+                "add-model",
+                "blog",
+                "Author",
+                "--field",
+                "name:char",
+                "--path",
+                str(root),
+            ],
+        ).exit_code
+        == 0
+    )
+    # Replace Post with author FK (force)
+    assert (
+        runner.invoke(
+            app,
+            [
+                "add-model",
+                "blog",
+                "Post",
+                "--field",
+                "title:char",
+                "--field",
+                "author:fk:to=Author",
+                "--force",
+                "--path",
+                str(root),
+            ],
+        ).exit_code
+        == 0
+    )
+    models = (root / "apps" / "blog" / "models.py").read_text(encoding="utf-8")
+    assert 'ForeignKey("Author"' in models or "ForeignKey(\"Author\"" in models
+
+    result = runner.invoke(
+        app,
+        [
+            "add-serializer",
+            "blog",
+            "Post",
+            "--nested",
+            "author",
+            "--force",
+            "--path",
+            str(root),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    ser = (root / "apps" / "blog" / "serializers.py").read_text(encoding="utf-8")
+    assert "AuthorNestedSerializer" in ser
+    assert "author = AuthorNestedSerializer(read_only=True)" in ser
+
+
+def test_add_serializer_bad_nested(tmp_path: Path) -> None:
+    root = _project_with_post(tmp_path)
+    result = runner.invoke(
+        app,
+        [
+            "add-serializer",
+            "blog",
+            "Post",
+            "--nested",
+            "nope",
+            "--force",
+            "--path",
+            str(root),
+        ],
+    )
+    assert result.exit_code == 1
+    assert "not a relation" in result.output.lower() or "Cannot nest" in result.output

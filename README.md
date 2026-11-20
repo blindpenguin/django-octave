@@ -69,7 +69,17 @@ uv run django-octave add-model blog Post \
   --path /path/to/project
 ```
 
-Field form: `name:type[:option=value…]`. Types: `char`, `text`, `int`, `bool`, `decimal`, `date`, `datetime`, `email`, `url`, `slug`, `uuid`.  
+Field form: `name:type[:option=value…]`.  
+Scalar types: `char`, `text`, `int`, `bool`, `decimal`, `date`, `datetime`, `email`, `url`, `slug`, `uuid`.  
+Relations: `fk`, `o2o`, `m2m` with required `to=Model` or `to=app_label.Model` (optional `on_delete=cascade|protect|set_null|…` for fk/o2o).
+
+```bash
+uv run django-octave add-model blog Post \
+  --field title:char \
+  --field author:fk:to=Author \
+  --field tags:m2m:to=Tag
+```
+
 If no `--field` is given, defaults to `name:char:max=255`. Updates serializer, admin, viewset, and router for the new model.
 
 ### Add a serializer
@@ -81,7 +91,13 @@ uv run django-octave add-serializer blog Post \
   --path /path/to/project
 ```
 
-Inspects `apps/<app>/models.py` for field names (plus `id` / timestamps when the model uses TimeStamped/TenantAware bases). Omit `--fields` to include all inspected fields. Use `--no-id` to drop `id`. `--force` replaces an existing `<Model>Serializer`.
+Inspects `apps/<app>/models.py` for field names (plus `id` / timestamps when the model uses TimeStamped/TenantAware bases). Relation fields default to primary-key style. Omit `--fields` to include all inspected fields. Use `--no-id` to drop `id`. `--force` replaces an existing `<Model>Serializer`.
+
+Optional read-only nesting (one level; creates a slim `{Related}NestedSerializer` when needed):
+
+```bash
+uv run django-octave add-serializer blog Post --nested author --force
+```
 
 ### Add a viewset
 
@@ -108,6 +124,13 @@ Creates or refreshes `<Model>ViewSet` with Spectacular tags, filter/search/order
 uv sync
 uv run pytest
 uv run ruff check src tests
+```
+
+Spec Workflow approval dashboard (approvals for specs):
+
+```bash
+./scripts/spec-dashboard.sh
+# → http://localhost:5000
 ```
 
 ### Cutting a GitHub Release

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Literal
 
 import libcst as cst
 
@@ -20,9 +21,25 @@ _FILTERABLE_TYPES = frozenset(
         "SlugField",
         "UUIDField",
         "EmailField",
+        "ForeignKey",
+        "OneToOneField",
     }
 )
 _SEARCHABLE_TYPES = frozenset({"CharField", "SlugField", "EmailField", "TextField"})
+_RELATION_KINDS: dict[str, Literal["fk", "o2o", "m2m"]] = {
+    "ForeignKey": "fk",
+    "OneToOneField": "o2o",
+    "ManyToManyField": "m2m",
+}
+
+
+@dataclass(frozen=True)
+class RelationInfo:
+    """Metadata for a relation field discovered on a model."""
+
+    kind: Literal["fk", "o2o", "m2m"]
+    to: str | None
+    """Target as ``Author`` or ``blog.Author`` when parseable from AST."""
 
 
 @dataclass(frozen=True)
@@ -32,6 +49,9 @@ class ModelFieldInfo:
     model_name: str
     fields: dict[str, str] = field(default_factory=dict)
     """Map of attribute name → Django field class name (e.g. ``CharField``)."""
+
+    relations: dict[str, RelationInfo] = field(default_factory=dict)
+    """Relation fields keyed by attribute name."""
 
     has_timestamps: bool = False
     """True when bases include TimeStampedModel or TenantAwareModel."""
@@ -75,14 +95,48 @@ def _field_type_from_call(value: cst.BaseExpression) -> str | None:
     parts = _attr_chain(value.func)
     if not parts:
         return None
-    # models.CharField / django.db.models.CharField / CharField
     type_name = parts[-1]
-    if not type_name.endswith("Field") and type_name not in {"ForeignKey", "OneToOneField", "ManyToManyField"}:
+    if not type_name.endswith("Field") and type_name not in {
+        "ForeignKey",
+        "OneToOneField",
+        "ManyToManyField",
+    }:
         return None
     if len(parts) >= 2 and parts[-2] == "models":
         return type_name
     if len(parts) == 1:
         return type_name
+    return None
+
+
+def _literal_str(node: cst.BaseExpression) -> str | None:
+    if isinstance(node, cst.SimpleString):
+        raw = node.value
+        if len(raw) >= 2 and raw[0] in {'"', "'"} and raw[-1] == raw[0]:
+            return raw[1:-1]
+    return None
+
+
+def _relation_to_from_call(value: cst.Call) -> str | None:
+    """Extract first positional or ``to=`` target from a relation field call."""
+    for arg in value.args:
+        if arg.keyword is None:
+            lit = _literal_str(arg.value)
+            if lit is not None:
+                return lit
+            if isinstance(arg.value, cst.Name):
+                return arg.value.value
+            parts = _attr_chain(arg.value)
+            if parts:
+                return ".".join(parts)
+            break
+    for arg in value.args:
+        if arg.keyword is not None and arg.keyword.value == "to":
+            lit = _literal_str(arg.value)
+            if lit is not None:
+                return lit
+            if isinstance(arg.value, cst.Name):
+                return arg.value.value
     return None
 
 
@@ -95,6 +149,21 @@ def _assign_targets(target: cst.BaseAssignTargetExpression) -> list[str]:
             names.extend(_assign_targets(elt.value))
         return names
     return []
+
+
+def _record_field(
+    fields: dict[str, str],
+    relations: dict[str, RelationInfo],
+    name: str,
+    field_type: str,
+    call: cst.BaseExpression,
+) -> None:
+    if name == "objects":
+        return
+    fields[name] = field_type
+    kind = _RELATION_KINDS.get(field_type)
+    if kind is not None and isinstance(call, cst.Call):
+        relations[name] = RelationInfo(kind=kind, to=_relation_to_from_call(call))
 
 
 def _collect_from_class(node: cst.ClassDef) -> ModelFieldInfo:
@@ -110,6 +179,7 @@ def _collect_from_class(node: cst.ClassDef) -> ModelFieldInfo:
 
     has_timestamps = any(b in _TIMESTAMP_BASES for b in bases)
     fields: dict[str, str] = {}
+    relations: dict[str, RelationInfo] = {}
 
     for stmt in node.body.body:
         if not isinstance(stmt, cst.SimpleStatementLine):
@@ -120,19 +190,20 @@ def _collect_from_class(node: cst.ClassDef) -> ModelFieldInfo:
                 if field_type is None:
                     continue
                 for name in _assign_targets(small.targets[0].target):
-                    if name == "objects":
-                        continue
-                    fields[name] = field_type
+                    _record_field(fields, relations, name, field_type, small.value)
             elif isinstance(small, cst.AnnAssign) and small.value is not None:
                 field_type = _field_type_from_call(small.value)
                 if field_type is None:
                     continue
-                if isinstance(small.target, cst.Name) and small.target.value != "objects":
-                    fields[small.target.value] = field_type
+                if isinstance(small.target, cst.Name):
+                    _record_field(
+                        fields, relations, small.target.value, field_type, small.value
+                    )
 
     return ModelFieldInfo(
         model_name=node.name.value,
         fields=fields,
+        relations=relations,
         has_timestamps=has_timestamps,
     )
 
@@ -184,3 +255,15 @@ def default_ordering_names(info: ModelFieldInfo) -> list[str]:
     if info.has_timestamps or "created_at" in info.fields:
         return ["created_at"]
     return []
+
+
+def resolve_related_app_and_model(
+    to: str,
+    *,
+    default_app: str,
+) -> tuple[str, str]:
+    """Return ``(app_label, ModelName)`` from a ``to`` string."""
+    if "." in to:
+        app, model = to.split(".", 1)
+        return app, model
+    return default_app, to

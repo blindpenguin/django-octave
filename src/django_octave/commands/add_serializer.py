@@ -13,6 +13,7 @@ from django_octave.api_parts.serializer_gen import (
     SerializerExistsError,
     SerializerFieldError,
     SerializerOptions,
+    parse_nested_option,
     write_serializer,
 )
 from django_octave.cli import app
@@ -52,6 +53,14 @@ def add_serializer_cmd(
         bool,
         typer.Option("--no-id", help="Omit id from Meta.fields."),
     ] = False,
+    nested: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--nested",
+            "-n",
+            help="Relation to nest read-only (repeatable). Form: field or field=ClassName.",
+        ),
+    ] = None,
     path: Annotated[
         Path,
         typer.Option("--path", help="Project root (default: current directory)."),
@@ -70,6 +79,7 @@ def add_serializer_cmd(
         fields=fields,
         read_only=read_only,
         no_id=no_id,
+        nested=nested,
         path=path,
         force=force,
     )
@@ -100,6 +110,7 @@ def add_serializer_cmd(
                 read_only=csv_to_list(options.read_only),
                 include_id=options.include_id,
                 force=options.force,
+                nested=[parse_nested_option(n) for n in options.nested],
             ),
         )
     except (

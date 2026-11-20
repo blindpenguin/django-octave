@@ -94,3 +94,27 @@ class Note(TimeStampedModel):
 def test_missing_model_raises() -> None:
     with pytest.raises(ModelWriteError, match="not found"):
         inspect_model_fields(SAMPLE_PLAIN, "Missing")
+
+
+SAMPLE_RELATIONS = '''
+from django.db import models
+from apps.core.models import TimeStampedModel
+
+class Author(TimeStampedModel):
+    name = models.CharField(max_length=100)
+
+class Post(TimeStampedModel):
+    title = models.CharField(max_length=100)
+    author = models.ForeignKey("Author", on_delete=models.CASCADE)
+    tags = models.ManyToManyField("Tag", blank=True)
+'''
+
+
+def test_inspect_relations() -> None:
+    info = inspect_model_fields(SAMPLE_RELATIONS, "Post")
+    assert "author" in info.relations
+    assert info.relations["author"].kind == "fk"
+    assert info.relations["author"].to == "Author"
+    assert info.relations["tags"].kind == "m2m"
+    assert "author" in filterable_names(info)
+    assert "tags" not in filterable_names(info)

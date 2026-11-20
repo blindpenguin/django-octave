@@ -2,6 +2,7 @@
 
 from django_octave.inspect.model_fields import (
     ModelFieldInfo,
+    RelationInfo,
     filterable_names,
     inspect_model_fields,
     searchable_names,
@@ -9,6 +10,7 @@ from django_octave.inspect.model_fields import (
 
 __all__ = [
     "ModelFieldInfo",
+    "RelationInfo",
     "filterable_names",
     "inspect_model_fields",
     "searchable_names",
