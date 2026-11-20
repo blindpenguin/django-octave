@@ -17,6 +17,7 @@ Pick items and open a Spec Workflow spec before implementing.
 | `add-admin` | Refine ModelAdmin (display/search/filter/select_related) | `add-admin` |
 | `add-test` | factory-boy + pytest API/model stubs | `add-test` |
 | `add-celery` / `add-task` | Opt-in Celery+Redis, Compose workers/Beat, `@shared_task` stubs | `add-celery` |
+| User docs site | MkDocs Material under `docs/`, slim README, GitHub Pages | `user-docs` |
 | GitHub Release CI | Tag → build → smoke → GitHub Release assets | `github-release-ci` |
 
 ## Planned: Vue + Nuxt UI frontend scaffolding

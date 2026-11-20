@@ -89,7 +89,7 @@ Python **CLI generator package** (distributed as `django-octave`) that scaffolds
 
 - **Static analysis / formatting**: Ruff (generator + generated projects)
 - **Testing**: pytest (+ pytest-django in generated projects)
-- **Docs**: OpenAPI via Spectacular in generated apps; README for the generator
+- **Docs**: OpenAPI via Spectacular in generated apps; MkDocs Material (`docs/`, `mkdocs.yml`) + slim README for the generator
 
 ### Version Control & Collaboration
 

@@ -138,7 +138,8 @@ Follow project Django rules:
 
 ## Documentation Standards
 
-- Generator: README with install, `new` / `add` examples (interactive + flags), option matrix (DB, Docker, multitenancy)
+- Generator: slim **README** (pitch, install, one quick start, link to docs) + **MkDocs Material** site under `docs/` (`mkdocs.yml`); command how-tos live in docs, not a README catalog
 - Generated project: README with how to run (uv / Docker), env vars, OpenAPI URL, migrate/createuser
 - Public Python APIs in the generator: typed signatures; docstrings on CLI commands
 - Steering and specs live under `.spec-workflow/`; implementation under `src/` and `tests/`
+- New user-facing generators/flags: update the matching `docs/commands/` page as part of Definition of Done

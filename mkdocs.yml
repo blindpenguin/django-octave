@@ -1,0 +1,73 @@
+site_name: django-octave
+site_description: Opinionated CLI to kickstart production-ready Django REST API projects
+site_url: https://blindpenguin.github.io/django-octave/
+repo_url: https://github.com/blindpenguin/django-octave
+repo_name: blindpenguin/django-octave
+edit_uri: edit/master/docs/
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue grey
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue grey
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+
+strict: true
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - Install: getting-started/install.md
+      - First project: getting-started/first-project.md
+  - Concepts:
+      - Project layout: concepts/layout.md
+      - Docker: concepts/docker.md
+      - Multitenancy: concepts/multitenancy.md
+      - Celery: concepts/celery.md
+  - Commands:
+      - new: commands/new.md
+      - add: commands/add.md
+      - add-model: commands/add-model.md
+      - add-serializer: commands/add-serializer.md
+      - add-viewset: commands/add-viewset.md
+      - add-permission: commands/add-permission.md
+      - add-action: commands/add-action.md
+      - add-admin: commands/add-admin.md
+      - add-test: commands/add-test.md
+      - add-celery: commands/add-celery.md
+      - add-task: commands/add-task.md
+  - Development:
+      - Contributing: development/contributing.md
+      - Releases: development/releases.md
+  - Roadmap: roadmap.md
