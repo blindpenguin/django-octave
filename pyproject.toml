@@ -1,6 +1,6 @@
 [project]
 name = "django-octave"
-version = "0.2.0"
+version = "0.3.0"
 description = "Opinionated CLI to kickstart production-ready Django REST API projects"
 readme = "README.md"
 license = "GPL-3.0-only"
