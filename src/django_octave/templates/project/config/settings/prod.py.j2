@@ -1,6 +1,16 @@
 """Production settings."""
 
+from django.core.exceptions import ImproperlyConfigured
+
 from config.settings.base import *  # noqa: F403
+
+# Refuse to boot with the placeholder / a weak key (same threshold as `check --deploy`).
+if SECRET_KEY.startswith("change-me") or len(SECRET_KEY) < 50:  # noqa: F405
+    msg = (
+        "DJANGO_SECRET_KEY is a placeholder or shorter than 50 characters. Generate one with: "
+        'python -c "from django.core.management.utils import get_random_secret_key as g; print(g())"'
+    )
+    raise ImproperlyConfigured(msg)
 
 DEBUG = False
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

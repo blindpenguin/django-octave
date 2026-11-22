@@ -38,6 +38,13 @@ def test_build_compose_services_deps() -> None:
     assert "- db" in block
 
 
+def test_build_compose_services_binds_redis_to_localhost() -> None:
+    block = build_compose_services(has_db=False, has_web=True)
+
+    assert '"127.0.0.1:6379:6379"' in block
+    assert '- "6379:6379"' not in block
+
+
 def test_inject_compose_insert_and_force(tmp_path: Path) -> None:
     path = tmp_path / "docker-compose.yml"
     path.write_text(SAMPLE, encoding="utf-8")

@@ -24,7 +24,7 @@ def build_compose_services(*, has_db: bool, has_web: bool) -> str:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
 
   worker:
     build: .

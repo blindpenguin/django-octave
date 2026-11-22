@@ -17,7 +17,7 @@ Opinionated Django REST API generated with [django-octave](https://github.com/).
 ```bash
 uv sync
 cp .env.example .env
-# edit .env — set DJANGO_SECRET_KEY
+# edit .env — set DJANGO_SECRET_KEY (prod settings reject the placeholder)
 uv run python manage.py migrate
 uv run python manage.py createsuperuser
 ```

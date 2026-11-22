@@ -18,8 +18,8 @@ services:
 {% if is_postgres %}
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: {{ project_slug }}
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -27,7 +27,7 @@ services:
 {% if is_mariadb %}
     image: mariadb:11
     environment:
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
       MYSQL_DATABASE: {{ project_slug }}
     volumes:
       - mariadata:/var/lib/mysql

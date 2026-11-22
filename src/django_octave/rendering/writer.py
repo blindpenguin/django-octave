@@ -28,7 +28,12 @@ def _destination_name(template_rel: Path) -> str:
 def _should_skip(template_rel: Path, ctx: ProjectContext) -> bool:
     parts = template_rel.parts
     # Docker artifacts only when enabled.
-    docker_files = {"Dockerfile.j2", "docker-compose.yml.j2", "docker-compose.prod.yml.j2"}
+    docker_files = {
+        "Dockerfile.j2",
+        "docker-compose.yml.j2",
+        "docker-compose.prod.yml.j2",
+        ".dockerignore.j2",
+    }
     if template_rel.name in docker_files and not ctx.use_docker:
         return True
     # Multitenancy-only files live under optional path markers.

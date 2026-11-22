@@ -77,3 +77,39 @@ def test_refuse_non_empty_without_force(tmp_path: Path) -> None:
     render_project(ctx)
     with pytest.raises(TargetExistsError):
         render_project(ctx)
+
+
+def test_render_docker_hardening(tmp_path: Path) -> None:
+    ctx = ProjectContext.from_options(
+        _options(tmp_path, database=DatabaseChoice.POSTGRES, docker=True)
+    )
+
+    target = render_project(ctx)
+
+    dockerfile = (target / "Dockerfile").read_text(encoding="utf-8")
+    assert "USER app" in dockerfile
+    assert "uv:latest" not in dockerfile
+    assert ".env" in (target / ".dockerignore").read_text(encoding="utf-8").splitlines()
+    prod = (target / "docker-compose.prod.yml").read_text(encoding="utf-8")
+    assert "POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?" in prod
+    dev = (target / "docker-compose.yml").read_text(encoding="utf-8")
+    assert '"127.0.0.1:5432:5432"' in dev
+
+
+def test_render_without_docker_skips_dockerignore(tmp_path: Path) -> None:
+    ctx = ProjectContext.from_options(_options(tmp_path, docker=False))
+
+    target = render_project(ctx)
+
+    assert not (target / ".dockerignore").exists()
+
+
+def test_render_prod_settings_reject_placeholder_secret(tmp_path: Path) -> None:
+    ctx = ProjectContext.from_options(_options(tmp_path))
+
+    target = render_project(ctx)
+
+    prod = (target / "config" / "settings" / "prod.py").read_text(encoding="utf-8")
+    assert "ImproperlyConfigured" in prod
+    base = (target / "config" / "settings" / "base.py").read_text(encoding="utf-8")
+    assert "DEFAULT_THROTTLE_RATES" in base

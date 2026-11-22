@@ -5,7 +5,7 @@ services:
     volumes:
       - .:/app
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     env_file:
       - .env
 {% if include_db_service %}
@@ -22,7 +22,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: {{ project_slug }}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 {% endif %}
@@ -32,7 +32,7 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: {{ project_slug }}
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     volumes:
       - mariadata:/var/lib/mysql
 {% endif %}
