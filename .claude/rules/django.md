@@ -1,7 +1,17 @@
 ---
-description: Django architecture — apps, models, thin views, services
-globs: "**/models.py,**/views*.py,**/urls.py,**/serializers.py,**/admin.py,**/apps.py,**/forms.py,**/managers.py,**/services.py,**/selectors.py,**/settings*.py,**/migrations/*.py"
-alwaysApply: false
+paths:
+  - "**/models.py"
+  - "**/views*.py"
+  - "**/urls.py"
+  - "**/serializers.py"
+  - "**/admin.py"
+  - "**/apps.py"
+  - "**/forms.py"
+  - "**/managers.py"
+  - "**/services.py"
+  - "**/selectors.py"
+  - "**/settings*.py"
+  - "**/migrations/*.py"
 ---
 
 # Django

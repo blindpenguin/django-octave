@@ -1,7 +1,6 @@
 ---
-description: Modern Python coding standards (typing, APIs, errors)
-globs: "**/*.py"
-alwaysApply: false
+paths:
+  - "**/*.py"
 ---
 
 # Python

@@ -55,7 +55,7 @@ chore(release): 0.2.3
 Optional `(scope)`: `add`, `add-model`, `celery`, `docs`, …  
 Breaking: `feat(api)!: …` or footer `BREAKING CHANGE: …`.
 
-Cursor enforces this via `.cursor/rules/commits.mdc`. Preview notes: `python3 scripts/release-notes.py`.
+Claude Code follows this via `CLAUDE.md`. Preview notes: `python3 scripts/release-notes.py`.
 
 ## Layout
 

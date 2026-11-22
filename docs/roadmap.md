@@ -35,7 +35,7 @@ Current package: **0.2.2**. Pick items and open a Spec Workflow spec before impl
 | User docs site | MkDocs Material under `docs/`, slim README, GitHub Pages | `user-docs` |
 | Docs ↔ release | Pages deploys on release publish only (master/PR = strict build CI) | (follow-on to `user-docs`) |
 | GitHub Release CI | Tag → build → smoke → Release assets | `github-release-ci` |
-| Conventional Commits | Cursor commit rule + `scripts/release-notes.py` wired into release body | (no formal spec) |
+| Conventional Commits | Claude commit rule (`CLAUDE.md`) + `scripts/release-notes.py` wired into release body | (no formal spec) |
 
 Verified by generators-only scaffolds: recipe / support-desk (API green), multitenancy (`mt_demo`), Docker+Postgres (`docker_demo`).
 

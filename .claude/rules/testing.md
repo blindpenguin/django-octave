@@ -1,7 +1,8 @@
 ---
-description: pytest conventions for django-octave
-globs: "**/tests/**/*.py,**/test_*.py,**/*_test.py"
-alwaysApply: false
+paths:
+  - "**/tests/**/*.py"
+  - "**/test_*.py"
+  - "**/*_test.py"
 ---
 
 # Testing (pytest)

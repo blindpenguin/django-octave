@@ -17,7 +17,9 @@ django-octave/
 │       └── app/                 # Single Django app skeleton
 ├── tests/                       # pytest suite (mirrors package)
 ├── .spec-workflow/              # Spec / steering artifacts
-├── .cursor/rules/               # Agent rules
+├── CLAUDE.md                    # Agent rules (always-on)
+├── .claude/rules/               # Path-scoped agent rules
+├── .mcp.json                    # MCP servers (spec-workflow)
 ├── pyproject.toml
 ├── README.md
 └── LICENSE                      # GPL-3.0
