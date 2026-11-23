@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import type { DropdownMenuItem, NavigationMenuItem } from '@nuxt/ui'
 
 import { getUserEmail, logout } from '../auth/useAuth'
 
+const route = useRoute()
 const router = useRouter()
 
 const userEmail = computed(() => getUserEmail() || 'Account')
@@ -14,9 +15,19 @@ const crudNavItems = [
   // --- django-octave crud nav end ---
 ] as NavigationMenuItem[]
 
+function pathActive(to: string): boolean {
+  return route.path === to || route.path.startsWith(`${to}/`)
+}
+
 const navItems = computed<NavigationMenuItem[]>(() => [
-  { label: 'Home', icon: 'i-lucide-house', to: '/' },
-  ...crudNavItems,
+  { label: 'Home', icon: 'i-lucide-house', to: '/', exact: true },
+  ...crudNavItems.map((item) => {
+    const to = typeof item.to === 'string' ? item.to : ''
+    return {
+      ...item,
+      active: to ? pathActive(to) : item.active,
+    }
+  }),
 ])
 
 const userMenuItems = computed<DropdownMenuItem[][]>(() => [

@@ -46,6 +46,7 @@ Verified by generators-only scaffolds: recipe / support-desk (API green), multit
 | `add-frontend` / `new --frontend` | Vue 3 + Vite + Vue Router + Nuxt UI shell; JWT login; optional register; CORS; Compose when Docker | `vue-nuxt-ui-frontend` |
 | `add-frontend-crud` / `--crud` | Full CRUD Vue pages per ModelViewSet; FK label selects; bulk on add-frontend/new | `vue-frontend-crud` |
 | App shell upgrade | AuthLayout + Nuxt UI Dashboard AppLayout (sidebar/drawer, user menu, nested router, content-only pages) | `vue-app-shell` |
+| Responsive CRUD lists | Gmail-style vertical list rows instead of tables on generated list pages | `responsive-crud-list` |
 
 **Not** full Nuxt. React / GraphQL / SSR remain out of scope. M2M editors are deferred.
 

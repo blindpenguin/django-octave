@@ -72,7 +72,11 @@ def test_render_crud_pages(tmp_path: Path) -> None:
     assert "unwrapList" in create
     assert ":label=\"'Title'\"" in create or "label=\"'Title'\"" in create or "'Title'" in create
     list_view = (page_dir / "ListView.vue").read_text(encoding="utf-8")
-    assert "header: 'Title'" in list_view or "header: \"Title\"" in list_view
+    assert "UTable" not in list_view
+    assert "primaryLabel" in list_view
+    assert "secondaryText" in list_view
+    assert "i-lucide-chevron-right" in list_view
+    assert "row['title']" in list_view or "title" in list_view
     assert "AppLayout" not in list_view
     assert "AppLayout" not in create
     assert any(p.name == "CreateView.vue" for p in written)

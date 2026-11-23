@@ -49,6 +49,9 @@ def test_render_frontend_without_register(tmp_path: Path) -> None:
     assert "crudNavItems" in layout
     assert "// --- django-octave crud nav begin ---" in layout
     assert "getUserEmail" in layout
+    assert "exact: true" in layout
+    assert "pathActive" in layout
+    assert "active: to ? pathActive(to)" in layout
 
     home = (target / "src" / "pages" / "HomeView.vue").read_text(encoding="utf-8")
     assert "AppLayout" not in home

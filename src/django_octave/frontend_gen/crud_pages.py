@@ -32,15 +32,34 @@ def _field_context(f: CrudField) -> dict[str, object]:
     }
 
 
+def _list_row_fields(
+    spec: ResourceSpec,
+    list_fields: list[CrudField],
+) -> tuple[str, list[CrudField]]:
+    """Pick primary field name and up to two secondary fields for list rows."""
+    names = {f.name for f in spec.fields}
+    if spec.label_field in names:
+        primary = spec.label_field
+    elif list_fields:
+        primary = list_fields[0].name
+    else:
+        primary = "id"
+    secondary = [f for f in list_fields if f.name != primary][:2]
+    return primary, secondary
+
+
 def _template_context(spec: ResourceSpec) -> dict[str, object]:
     writable = [f for f in spec.fields if f.kind != "readonly"]
     list_fields = writable[:6] or list(spec.fields)[:6]
+    primary_field, secondary_fields = _list_row_fields(spec, list_fields)
     return {
         "model_name": spec.model_name,
         "model_snake": spec.model_snake,
         "model_plural": spec.model_plural,
         "api_collection": spec.api_collection,
         "label_field": spec.label_field,
+        "primary_field": primary_field,
+        "secondary_fields": [_field_context(f) for f in secondary_fields],
         "fields": [_field_context(f) for f in spec.fields],
         "writable_fields": [_field_context(f) for f in writable],
         "list_fields": [_field_context(f) for f in list_fields],

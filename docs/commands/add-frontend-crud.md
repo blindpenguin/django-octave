@@ -2,6 +2,8 @@
 
 Generate **list / detail / create / edit** Vue pages (plus delete-with-confirm on detail) for a DRF `ModelViewSet`, wired into the SPA router and nav.
 
+List pages use a **Gmail-style vertical list** (full-width tappable rows with primary + secondary text) instead of a data table, so they stay usable on phones.
+
 Requires an existing `frontend/` from [add-frontend](add-frontend.md) and a discoverable viewset (see [add-viewset](add-viewset.md)).
 
 ## Examples
@@ -37,7 +39,7 @@ uv run django-octave new myapi -d sqlite --no-docker --no-multitenancy \
 
 ## What it writes
 
-- `frontend/src/pages/<plural>/` — `ListView`, `DetailView`, `CreateView`, `EditView`
+- `frontend/src/pages/<plural>/` — `ListView` (responsive inbox-style rows → detail), `DetailView`, `CreateView`, `EditView`
 - `frontend/src/composables/useCrudResource.ts` — shared list/detail/mutate helpers (once)
 - Nested router **child** routes under `AppLayout` + sidebar `crudNavItems` entries (JS marker regions)
 

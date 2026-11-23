@@ -11,12 +11,36 @@ const rows = ref<CrudRecord[]>([])
 const error = ref('')
 const loading = ref(true)
 
-const columns = [
-{% for f in list_fields %}
-  { accessorKey: '{{ f.name }}', header: '{{ f.label }}' },
+{% raw %}
+function primaryLabel(row: CrudRecord): string {
+  const fromApi = row.label
+  if (fromApi != null && String(fromApi).trim() !== '') {
+    return String(fromApi)
+  }
+{% endraw %}
+  const v = row['{{ primary_field }}']
+{% raw %}
+  if (v != null && String(v).trim() !== '') {
+    return String(v)
+  }
+  return row.id != null ? `#${row.id}` : '—'
+}
+
+function secondaryText(row: CrudRecord): string {
+  const parts: string[] = []
+{% endraw %}
+{% for f in secondary_fields %}
+  {
+    const v = row['{{ f.name }}']
+    if (v != null && String(v).trim() !== '') {
+      parts.push(String(v))
+    }
+  }
 {% endfor %}
-  { accessorKey: '_actions', header: '' },
-]
+{% raw %}
+  return parts.join(' · ')
+}
+{% endraw %}
 
 onMounted(async () => {
   try {
@@ -27,6 +51,13 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+function openDetail(id: unknown) {
+  void router.push({
+    name: '{{ model_plural }}-detail',
+    params: { id: String(id) },
+  })
+}
 </script>
 
 <template>
@@ -36,28 +67,41 @@ onMounted(async () => {
       <UButton :to="{ name: '{{ model_plural }}-create' }">New</UButton>
     </div>
     <UAlert v-if="error" color="error" :title="error" class="mb-4" />
-    <UCard>
-      <div v-if="loading" class="text-muted">Loading…</div>
-      <UTable v-else :data="rows" :columns="columns">
-        <template #_actions-cell="{ row }">
-          <div class="flex gap-2 justify-end">
-            <UButton
-              size="xs"
-              variant="ghost"
-              @click="router.push({ name: '{{ model_plural }}-detail', params: { id: String(row.original.id) } })"
-            >
-              View
-            </UButton>
-            <UButton
-              size="xs"
-              variant="ghost"
-              @click="router.push({ name: '{{ model_plural }}-edit', params: { id: String(row.original.id) } })"
-            >
-              Edit
-            </UButton>
+    <div v-if="loading" class="text-muted px-1 py-3">Loading…</div>
+    <p
+      v-else-if="!rows.length"
+      class="text-muted px-1 py-6"
+    >
+      No {{ model_name }} yet. Use New to create one.
+    </p>
+    <div
+      v-else
+      class="overflow-hidden rounded-lg border border-default divide-y divide-default"
+    >
+      <button
+        v-for="row in rows"
+        :key="String(row.id)"
+        type="button"
+        class="flex w-full min-h-14 items-center gap-3 px-3 py-3 text-left
+               hover:bg-elevated/50 active:bg-elevated transition-colors"
+        @click="openDetail(row.id)"
+      >
+        <div class="min-w-0 flex-1">
+          <div class="truncate font-medium text-highlighted">
+            {% raw %}{{ primaryLabel(row) }}{% endraw %}
           </div>
-        </template>
-      </UTable>
-    </UCard>
+          <div
+            v-if="secondaryText(row)"
+            class="truncate text-sm text-muted"
+          >
+            {% raw %}{{ secondaryText(row) }}{% endraw %}
+          </div>
+        </div>
+        <UIcon
+          name="i-lucide-chevron-right"
+          class="size-5 shrink-0 text-dimmed"
+        />
+      </button>
+    </div>
   </div>
 </template>
