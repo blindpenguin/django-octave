@@ -48,3 +48,12 @@ Workflow: [`.github/workflows/docs.yml`](https://github.com/blindpenguin/django-
 One-time: repo **Settings → Pages → Source: GitHub Actions**.
 
 Edit docs on `master` as usual; they go live on the **next** release (or a manual dispatch from the release tag).
+
+!!! warning "Known issue: the deploy does not start by itself"
+    The workflow is meant to deploy when a release is published, but the release is created with the workflow's own `GITHUB_TOKEN`, and GitHub does not start other workflows from events created that way. After every release, deploy the docs by hand:
+
+    ```bash
+    gh workflow run Docs -f tag=v0.3.0   # use the new tag
+    ```
+
+    Then check that <https://blindpenguin.github.io/django-octave/> shows the new pages. The fix is on the [roadmap](../roadmap.md) (item 14).
