@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
 from django_octave.cli import app
@@ -162,3 +164,101 @@ def test_add_model_multitenancy(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.output
     models = (root / "apps" / "blog" / "models.py").read_text(encoding="utf-8")
     assert "TenantAwareModel" in models
+
+
+UUID_TEXT = "123e4567-e89b-12d3-a456-426614174000"
+
+
+def _snapshot(root: Path) -> dict[str, bytes]:
+    return {
+        str(p.relative_to(root)): p.read_bytes()
+        for p in sorted((root / "apps" / "blog").rglob("*"))
+        if p.is_file() and "__pycache__" not in p.parts
+    }
+
+
+def _add_model(root: Path, *fields: str) -> object:
+    return runner.invoke(
+        app,
+        ["add-model", "blog", "Post", "--fields", ",".join(fields), "--path", str(root)],
+    )
+
+
+def _post_default(models_source: str) -> ast.expr:
+    """The ``default=`` argument of the first field in ``class Post``."""
+    post = next(
+        n
+        for n in ast.parse(models_source).body
+        if isinstance(n, ast.ClassDef) and n.name == "Post"
+    )
+    for node in ast.walk(post):
+        if isinstance(node, ast.Call):
+            for kw in node.keywords:
+                if kw.arg == "default":
+                    return kw.value
+    raise AssertionError("no default= found")
+
+
+@pytest.mark.parametrize(
+    ("field", "expected"),
+    [
+        ("title:char:default=hello", "hello"),
+        ("title:char:default=it's \"q\"", "it's \"q\""),
+        ("count:int:default=3", 3),
+        ("ok:bool:default=true", True),
+        ("price:decimal:default=9.99", "9.99"),
+    ],
+)
+def test_add_model_literal_defaults_generate_valid_models(
+    tmp_path: Path, field: str, expected: object
+) -> None:
+    root = _project_with_app(tmp_path)
+
+    result = _add_model(root, field)
+
+    assert result.exit_code == 0, result.output
+    models = (root / "apps" / "blog" / "models.py").read_text(encoding="utf-8")
+    assert ast.literal_eval(_post_default(models)) == expected
+
+
+@pytest.mark.parametrize(
+    ("field", "expected"),
+    [
+        ("ref:uuid:default=uuid4", "uuid.uuid4"),
+        (f"ref:uuid:default={UUID_TEXT}", f"uuid.UUID('{UUID_TEXT}')"),
+    ],
+)
+def test_add_model_uuid_defaults_import_uuid(
+    tmp_path: Path, field: str, expected: str
+) -> None:
+    root = _project_with_app(tmp_path)
+
+    result = _add_model(root, field)
+
+    assert result.exit_code == 0, result.output
+    models = (root / "apps" / "blog" / "models.py").read_text(encoding="utf-8")
+    assert ast.unparse(_post_default(models)) == expected
+    assert "import uuid" in models
+
+
+@pytest.mark.parametrize(
+    ("field", "message"),
+    [
+        ("x:date:default=__import__('os').getcwd()", "Defaults are not supported"),
+        ("n:int:default=abc", "Invalid default"),
+        ("ok:bool:default=maybe", "Invalid default"),
+        ("class:char", "Python keyword"),
+        ("save:char", "shadow a Django model method"),
+    ],
+)
+def test_add_model_rejected_input_exits_1_and_writes_nothing(
+    tmp_path: Path, field: str, message: str
+) -> None:
+    root = _project_with_app(tmp_path)
+    before = _snapshot(root)
+
+    result = _add_model(root, field)
+
+    assert result.exit_code == 1
+    assert message in " ".join(result.output.split())
+    assert _snapshot(root) == before

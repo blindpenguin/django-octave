@@ -11,6 +11,7 @@ from rich.console import Console
 from django_octave.cli import app
 from django_octave.options import DatabaseChoice
 
+console = Console()
 err_console = Console(stderr=True)
 
 
@@ -75,7 +76,10 @@ def new_project(
         bool,
         typer.Option(
             "--force",
-            help="Allow generating into a non-empty directory.",
+            help=(
+                "Generate into a non-empty directory: generated files are overwritten, "
+                "everything else is kept."
+            ),
         ),
     ] = False,
     celery: Annotated[
@@ -100,7 +104,7 @@ def new_project(
     from django_octave.prompts.new_project import resolve_new_project_options
     from django_octave.rendering.context import ProjectContext
     from django_octave.rendering.summary import print_next_steps
-    from django_octave.rendering.writer import TargetExistsError, render_project
+    from django_octave.rendering.writer import TargetExistsError, render_project_report
 
     options = resolve_new_project_options(
         name=name,
@@ -115,13 +119,15 @@ def new_project(
     )
     ctx = ProjectContext.from_options(options)
     try:
-        render_project(ctx)
-    except TargetExistsError as exc:
+        report = render_project_report(ctx)
+    except (TargetExistsError, NotADirectoryError, ValueError) as exc:
         err_console.print(f"[red]{exc}[/red]")
         raise typer.Exit(code=1) from exc
-    except ValueError as exc:
-        err_console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(code=1) from exc
+    if report.overwritten:
+        console.print(
+            f"[yellow]Overwrote {report.overwritten} existing file(s); "
+            "files outside the generated tree were kept.[/yellow]"
+        )
 
     if options.frontend:
         try:

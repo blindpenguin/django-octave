@@ -40,7 +40,16 @@ uv run django-octave new myapi \
 | `--crud` / `--no-crud` | With frontend: Vue CRUD for all ModelViewSets (prompted if omitted) |
 | `--celery` / `--no-celery` | Run Celery setup after create (default: **off**) |
 | `--path` | Parent directory (default: `.`) |
-| `--force` | Allow non-empty target directory |
+| `--force` | Generate into a non-empty directory: generated files are **overwritten**, everything else is **kept** (see below) |
+
+## Existing directories and `--force`
+
+- Target missing or empty: the project is created there.
+- Target not empty: refused, unless `--force` is given.
+- With `--force`, each generated file is written over the file at the same path. Files that are not part of the generated tree (your own apps, notes, `.git/`) are never touched or deleted. The command prints how many files it overwrote.
+- Nothing is written if any path it would write is a symbolic link (or goes through one), or if a directory sits where a file belongs. The error names the path.
+
+Unrelated edits to generated files (for example your own `config/settings/base.py`) **are** overwritten, so commit first.
 
 ## What it writes
 

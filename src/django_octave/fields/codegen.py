@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+import uuid
+
 from django_octave.fields.parser import RELATION_TYPES, FieldSpec
 
 _TYPE_MAP: dict[str, str] = {
@@ -33,22 +36,26 @@ _RELATION_CTOR: dict[str, str] = {
 }
 
 
+_TEXT_DEFAULT_TYPES = frozenset({"char", "text", "email", "url", "slug"})
+
+
 def _default_expr(spec: FieldSpec) -> str | None:
+    """Source for ``default=``; literals only (the parser has validated the value)."""
     if spec.default is None:
         return None
     raw = spec.default
     if spec.type_key == "bool":
-        return "True" if raw.lower() in {"1", "true", "yes", "on"} else "False"
+        return "True" if raw == "true" else "False"
     if spec.type_key == "int":
         return str(int(raw))
-    if spec.type_key == "uuid" and raw.lower() in {"uuid", "uuid4"}:
-        return "uuid.uuid4"
-    if spec.type_key in {"char", "text", "email", "url", "slug"}:
-        escaped = raw.replace("\\", "\\\\").replace('"', '\\"')
-        return f'"{escaped}"'
-    if spec.type_key == "decimal":
-        return f'"{raw}"'
-    return raw
+    if spec.type_key in _TEXT_DEFAULT_TYPES or spec.type_key == "decimal":
+        return json.dumps(raw, ensure_ascii=False)
+    if spec.type_key == "uuid":
+        if raw == "uuid4":
+            return "uuid.uuid4"
+        return f"uuid.UUID({json.dumps(str(uuid.UUID(raw)))})"
+    msg = f"Unsupported default for {spec.type_key} field {spec.name!r}"
+    raise ValueError(msg)
 
 
 def _related_to_literal(related_to: str) -> str:
@@ -98,10 +105,8 @@ def field_source(spec: FieldSpec) -> str:
 
 
 def needs_uuid_import(fields: list[FieldSpec]) -> bool:
-    return any(
-        f.type_key == "uuid" and f.default is not None and f.default.lower() in {"uuid", "uuid4"}
-        for f in fields
-    )
+    """True when any field's default is written as ``uuid.uuid4`` / ``uuid.UUID(...)``."""
+    return any(f.type_key == "uuid" and f.default is not None for f in fields)
 
 
 def str_field_name(fields: list[FieldSpec]) -> str | None:

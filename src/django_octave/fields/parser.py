@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import keyword
 import re
+import uuid
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 
 ALLOWED_TYPES: frozenset[str] = frozenset(
     {
@@ -33,6 +36,23 @@ ON_DELETE_CHOICES: frozenset[str] = frozenset(
 RESERVED_FIELD_NAMES: frozenset[str] = frozenset(
     {"id", "pk", "objects", "all_objects", "DoesNotExist", "MultipleObjectsReturned"}
 )
+
+MODEL_API_NAMES: frozenset[str] = frozenset(
+    {
+        "save",
+        "delete",
+        "clean",
+        "full_clean",
+        "validate_unique",
+        "refresh_from_db",
+        "from_db",
+        "check",
+        "serializable_value",
+    }
+)
+"""Django ``Model`` methods a field must not shadow."""
+
+_TEXT_TYPES = frozenset({"char", "text", "email", "url", "slug"})
 
 _FIELD_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _RELATED_TO_RE = re.compile(r"^([A-Z][A-Za-z0-9_]*)(\.[A-Z][A-Za-z0-9_]*)?$")
@@ -76,6 +96,56 @@ def _parse_bool(raw: str) -> bool:
     raise FieldParseError(msg)
 
 
+def _parse_int(name: str, key: str, raw: str) -> int:
+    try:
+        return int(raw)
+    except ValueError:
+        msg = f"Invalid {key}={raw!r} for field {name!r}; expected an integer"
+        raise FieldParseError(msg) from None
+
+
+def _normalise_default(type_key: str, name: str, raw: str) -> str:
+    """Validate ``default=`` and return the normalised value codegen formats.
+
+    Only values that can be written as a safe literal are accepted; anything
+    else is rejected so no CLI text is ever copied into generated source.
+    """
+    where = f"default for {name}:{type_key}"
+    if type_key in _TEXT_TYPES:
+        return raw
+    if type_key == "bool":
+        try:
+            return "true" if _parse_bool(raw) else "false"
+        except FieldParseError:
+            msg = f"Invalid {where}: {raw!r}; use true or false"
+            raise FieldParseError(msg) from None
+    if type_key == "int":
+        try:
+            return str(int(raw))
+        except ValueError:
+            msg = f"Invalid {where}: {raw!r}; expected an integer"
+            raise FieldParseError(msg) from None
+    if type_key == "decimal":
+        try:
+            value = Decimal(raw)
+        except InvalidOperation:
+            value = None
+        if value is None or not value.is_finite():
+            msg = f"Invalid {where}: {raw!r}; expected a finite number"
+            raise FieldParseError(msg)
+        return raw
+    if type_key == "uuid":
+        if raw.lower() in {"uuid", "uuid4"}:
+            return "uuid4"
+        try:
+            return str(uuid.UUID(raw))
+        except ValueError:
+            msg = f"Invalid {where}: {raw!r}; use uuid4 or a UUID string"
+            raise FieldParseError(msg) from None
+    msg = f"Defaults are not supported for {type_key} fields (field {name!r})"
+    raise FieldParseError(msg)
+
+
 def _validate_related_to(raw: str) -> str:
     value = raw.strip()
     if _RELATED_TO_APP_RE.match(value) or _RELATED_TO_RE.match(value):
@@ -101,6 +171,12 @@ def parse_field(raw: str) -> FieldSpec:
     if name in RESERVED_FIELD_NAMES:
         msg = f"Field name {name!r} is reserved"
         raise FieldParseError(msg)
+    if keyword.iskeyword(name):
+        msg = f"Field name {name!r} is a Python keyword"
+        raise FieldParseError(msg)
+    if name in MODEL_API_NAMES:
+        msg = f"Field name {name!r} would shadow a Django model method"
+        raise FieldParseError(msg)
     type_key = type_key.lower()
     if type_key not in ALLOWED_TYPES:
         allowed = ", ".join(sorted(ALLOWED_TYPES))
@@ -116,6 +192,7 @@ def parse_field(raw: str) -> FieldSpec:
     related_to: str | None = None
     on_delete: str | None = "cascade" if type_key in {"fk", "o2o"} else None
 
+    after_default = False
     for opt in option_parts:
         if not opt:
             continue
@@ -137,13 +214,13 @@ def parse_field(raw: str) -> FieldSpec:
             else:
                 unique = flag
         elif key == "default":
-            default = value
+            default = _normalise_default(type_key, name, value)
         elif key == "max":
-            max_length = int(value)
+            max_length = _parse_int(name, key, value)
         elif key == "max_digits":
-            max_digits = int(value)
+            max_digits = _parse_int(name, key, value)
         elif key == "decimal_places":
-            decimal_places = int(value)
+            decimal_places = _parse_int(name, key, value)
         elif key == "to":
             if type_key not in RELATION_TYPES:
                 msg = f"Option to= is only valid for fk/o2o/m2m (got {type_key})"
@@ -161,7 +238,10 @@ def parse_field(raw: str) -> FieldSpec:
             on_delete = token
         else:
             msg = f"Unknown field option {key!r} in {raw!r}"
+            if after_default:
+                msg += "; values containing ':' are not supported"
             raise FieldParseError(msg)
+        after_default = key == "default"
 
     if type_key == "decimal" and (max_digits is None or decimal_places is None):
         msg = "decimal fields require max_digits and decimal_places"
