@@ -3,6 +3,7 @@
 ## Cutting a GitHub Release
 
 1. Ensure user-facing work is already on `master` with [Conventional Commits](contributing.md#commits) (`feat` / `fix` / `docs` / `perf`).
+   Mark breaking changes with `!` after the type (`feat(api)!: ...`) or a `BREAKING CHANGE:` footer in the commit body. The release notes list them first, under **Breaking changes**; a footer's text (up to the next blank line or trailer such as `Co-Authored-By:`) is used in place of the subject, so say there what breaks and what to do about it.
 2. Bump `version` in `pyproject.toml` (e.g. `uv version 0.2.3`).
 3. Commit **only** the bump: `chore(release): 0.2.3`.
 4. Preview notes (optional):

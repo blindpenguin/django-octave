@@ -28,6 +28,12 @@ _SECTION_ORDER = (
 
 _USER_FACING = frozenset(t for t, _ in _SECTION_ORDER)
 
+_BREAKING_FOOTER_RE = re.compile(r"^BREAKING[ -]CHANGE:\s*(?P<text>.*)$")
+_TRAILER_RE = re.compile(r"^[A-Za-z][A-Za-z-]*:\s")
+
+# A commit is either its subject, or ``(subject, body)`` when footers should be read.
+Commit = str | tuple[str, str]
+
 
 def _run(args: list[str]) -> str:
     return subprocess.check_output(args, text=True).strip()
@@ -84,12 +90,46 @@ def _subjects(start: str, end: str) -> list[str]:
     return [line for line in out.splitlines() if line.strip()]
 
 
-def _format(subjects: list[str]) -> str:
+def _commits(start: str, end: str) -> list[tuple[str, str]]:
+    """``(subject, body)`` of every non-merge commit in the range."""
+    rev = f"{start}..{end}" if start else end
+    out = _run(["git", "log", rev, "--no-merges", "--pretty=format:%x1e%s%x1f%b"])
+    commits = []
+    for record in out.split("\x1e"):
+        subject, _, body = record.partition("\x1f")
+        if subject.strip():
+            commits.append((subject.strip(), body))
+    return commits
+
+
+def _breaking_footers(body: str) -> list[str]:
+    """Texts of ``BREAKING CHANGE:`` footers (a footer runs to a blank line or the next trailer)."""
+    footers: list[str] = []
+    lines = body.splitlines()
+    i = 0
+    while i < len(lines):
+        match = _BREAKING_FOOTER_RE.match(lines[i].strip())
+        if not match:
+            i += 1
+            continue
+        parts = [match.group("text").strip()]
+        i += 1
+        while i < len(lines) and lines[i].strip() and not _TRAILER_RE.match(lines[i].strip()):
+            parts.append(lines[i].strip())
+            i += 1
+        text = " ".join(part for part in parts if part)
+        if text:
+            footers.append(text)
+    return footers
+
+
+def _format(commits: list[Commit]) -> str:
     buckets: dict[str, list[str]] = defaultdict(list)
     breaking: list[str] = []
     unmatched: list[str] = []
 
-    for subject in subjects:
+    for commit in commits:
+        subject, body = (commit, "") if isinstance(commit, str) else commit
         # Skip pure version-bump commits.
         if re.match(r"^chore\(release\):\s*", subject):
             continue
@@ -100,13 +140,16 @@ def _format(subjects: list[str]) -> str:
         kind = match.group("type")
         scope = match.group("scope")
         text = match.group("subject").strip()
-        if match.group("breaking") or text.lower().startswith("breaking"):
-            label = f"**{scope}:** {text}" if scope else text
-            breaking.append(label)
+        prefix = f"**{scope}:** " if scope else ""
+        footers = _breaking_footers(body)
+        if footers:
+            # The footer says what breaks; it is more useful than the subject.
+            breaking.extend(f"{prefix}{footer}" for footer in footers)
+        elif match.group("breaking") or text.lower().startswith("breaking"):
+            breaking.append(f"{prefix}{text}")
         if kind not in _USER_FACING:
             continue
-        label = f"**{scope}:** {text}" if scope else text
-        buckets[kind].append(label)
+        buckets[kind].append(f"{prefix}{text}")
 
     lines: list[str] = []
     if breaking:
@@ -135,7 +178,7 @@ def _format(subjects: list[str]) -> str:
 
 def main() -> None:
     start, end = _resolve_range(sys.argv[1:])
-    print(_format(_subjects(start, end)), end="")
+    print(_format(_commits(start, end)), end="")
 
 
 if __name__ == "__main__":
