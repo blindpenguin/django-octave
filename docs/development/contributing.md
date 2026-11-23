@@ -24,6 +24,8 @@ Pull requests run `ruff check src tests`, `pytest` and `mkdocs build --strict` (
 
 All third-party actions are pinned to a commit SHA with the version in a trailing comment; Dependabot proposes updates. `tests/test_workflows.py` enforces the pinning, least-privilege permissions and the release gate. `ruff format --check` is not part of CI yet.
 
+A separate workflow, `Audit`, runs `uv audit --locked` against `uv.lock` once a week, when a pull request changes `uv.lock` or `pyproject.toml`, and on demand. It is deliberately not part of `CI` or the release gate, so a new advisory for an unrelated package cannot block a pull request or a hotfix release. Run it locally with `uv audit --locked`.
+
 ## Documentation
 
 User docs live under `docs/` and are built with MkDocs Material:

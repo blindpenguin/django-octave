@@ -236,7 +236,9 @@ def upsert_method(
     try:
         addition_mod = cst.parse_module(method_src.lstrip("\n"))
     except cst.ParserSyntaxError as exc:
-        raise ModelWriteError(f"Could not parse method source: {exc}") from exc
+        raise ModelWriteError(
+            f"Could not generate method {method_name} for {path}: {exc}"
+        ) from exc
     addition = list(addition_mod.body)
     if not addition:
         raise ModelWriteError("method_src produced no statements")
@@ -336,7 +338,12 @@ def upsert_class(
         raise ModelWriteError(f"Could not parse {path}: {exc}") from exc
     if exists and force:
         module = module.visit(_RemoveClass(class_name))
-    addition_mod = cst.parse_module(class_src.lstrip("\n"))
+    try:
+        addition_mod = cst.parse_module(class_src.lstrip("\n"))
+    except cst.ParserSyntaxError as exc:
+        raise ModelWriteError(
+            f"Could not generate {class_name} for {path}: {exc}"
+        ) from exc
     addition = _with_blank_leading(list(addition_mod.body))
     body = list(module.body)
     insert_at: int | None = None

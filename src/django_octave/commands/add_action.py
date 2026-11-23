@@ -25,6 +25,8 @@ from django_octave.cli import app
 from django_octave.models_gen.writer import ModelWriteError
 from django_octave.naming import InvalidAppNameError, validate_app_name
 from django_octave.project.detect import NotOctaveProjectError, detect_project
+from django_octave.rollback import rollback_on_error
+from django_octave.safe_names import validate_tag, validate_url_name, validate_url_path
 
 err_console = Console(stderr=True)
 console = Console()
@@ -109,6 +111,12 @@ def add_action_cmd(
         force=force,
     )
     try:
+        if options.tag is not None:
+            validate_tag(options.tag)
+        if options.url_path is not None:
+            validate_url_path(options.url_path)
+        if options.url_name is not None:
+            validate_url_name(options.url_name)
         project = detect_project(options.path)
         app = validate_app_name(options.app)
         app_dir = project.apps_dir / app
@@ -118,22 +126,23 @@ def add_action_cmd(
             )
         method_list = parse_http_methods(options.methods, detail=options.detail)
         vs_class = resolve_viewset_class_name(options.viewset)
-        views_path = write_action(
-            app_dir,
-            options=ActionOptions(
-                app_name=app,
-                viewset=options.viewset,
-                action_name=options.action_name,
-                detail=options.detail,
-                methods=method_list,
-                url_path=options.url_path,
-                url_name=options.url_name,
-                permission=options.permission,
-                serializer=options.serializer,
-                tag=options.tag,
-                force=options.force,
-            ),
-        )
+        with rollback_on_error(project.root):
+            views_path = write_action(
+                app_dir,
+                options=ActionOptions(
+                    app_name=app,
+                    viewset=options.viewset,
+                    action_name=options.action_name,
+                    detail=options.detail,
+                    methods=method_list,
+                    url_path=options.url_path,
+                    url_name=options.url_name,
+                    permission=options.permission,
+                    serializer=options.serializer,
+                    tag=options.tag,
+                    force=options.force,
+                ),
+            )
     except (
         NotOctaveProjectError,
         InvalidAppNameError,

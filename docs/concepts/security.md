@@ -47,6 +47,57 @@ Clients are identified by address. **Behind a reverse proxy, set `DJANGO_NUM_PRO
 
 `add-frontend` reads the title from the first `# ` heading of `README.md`. If that heading is not a valid name by the same rule (for example `# Bob's "Shop"`), the SPA uses the project slug as its title instead; nothing fails. The same applies to a `name` in `pyproject.toml` that is not a plain package-style identifier.
 
+## Who can access what
+
+These are the defaults of a generated project (checked against a real one):
+
+- **Every API endpoint requires a valid JWT.** `DEFAULT_PERMISSION_CLASSES` is `IsAuthenticated`, and each generated viewset repeats it. The open endpoints are token obtain/refresh, and registration when you chose `--register` (all rate limited), plus the API docs, which are open locally and admin-only in production.
+- **There is no ownership.** Any authenticated user can list, read, create, update and delete **every row of every generated model**. With `--multitenancy` the tenant limits this: users only see and change rows of a tenant they are a member of, but every member can touch every row of that tenant.
+- **Registration is access.** With `--register`, anyone who can reach the API can create an account, and that account has the access above.
+- **`AllowAny` only when you ask for it** (`add-viewset --permission AllowAny`). It allows anonymous reads **and writes** unless you restrict the methods yourself.
+- **The user list** (`GET /api/users/`, created by `add-frontend`) shows the email of every user to any authenticated user, or only the current tenant's members with `--multitenancy`.
+
+### Restricting access
+
+| Need | How |
+|------|-----|
+| Staff-only writes, everyone reads | `add-permission <app> IsStaffOrRead --preset staff_or_read --viewset <Model>` |
+| Admin-only endpoint | `add-viewset <app> <Model> --permission IsAdminUser --force` |
+| A different rule for one action | `add-action ... --permission <Permission>` |
+| Per-owner access | the `owner` preset, **plus the two steps below** |
+
+!!! warning "The `owner` preset protects single objects, not the list"
+    `add-permission --preset owner` checks the owner of an object when it is **read, changed or deleted** (anyone else gets `403`). It does **not** filter the list endpoint: `GET /api/<models>/` still returns every user's rows. Filter the queryset yourself:
+
+    ```python
+    class NoteViewSet(viewsets.ModelViewSet):
+        def get_queryset(self):
+            return super().get_queryset().filter(owner=self.request.user)
+    ```
+
+!!! warning "A generated owner field is writable"
+    The serializer for a model with an `owner` (or `author`, ...) foreign key to the user exposes that field as writable, so a client can create a row **owned by someone else**. Make it read-only and set it on the server:
+
+    ```python
+    class Meta:
+        read_only_fields = ("id", "owner", "created_at", "updated_at")
+
+    class NoteViewSet(viewsets.ModelViewSet):
+        def perform_create(self, serializer):
+            serializer.save(owner=self.request.user)
+    ```
+
+## Dependencies
+
+The generator does not lock the dependencies of a generated project (it pins version ranges). After generating, run `uv lock`, commit `uv.lock`, and check it regularly:
+
+```bash
+uv lock
+uv audit        # reports known vulnerabilities in the locked packages
+```
+
+The repository of `django-octave` itself runs `uv audit` weekly and whenever its lock file changes (`.github/workflows/audit.yml`).
+
 ## Multitenancy
 
 With `--multitenancy`, `GET /api/users/` (the user list behind FK dropdowns) lists only members of the current tenant and needs the `X-Tenant-ID` header like every other tenant endpoint. See [Multitenancy](multitenancy.md).

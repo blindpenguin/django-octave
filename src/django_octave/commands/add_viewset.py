@@ -30,6 +30,8 @@ from django_octave.naming import (
 )
 from django_octave.project.detect import NotOctaveProjectError, detect_project
 from django_octave.prompts.add_serializer import csv_to_list
+from django_octave.rollback import rollback_on_error
+from django_octave.safe_names import validate_tag
 
 err_console = Console(stderr=True)
 console = Console()
@@ -95,6 +97,8 @@ def add_viewset_cmd(
         force=force,
     )
     try:
+        if options.tag is not None:
+            validate_tag(options.tag)
         project = detect_project(options.path)
         app = validate_app_name(options.app)
         model = validate_model_name(options.model)
@@ -112,20 +116,21 @@ def add_viewset_cmd(
                 f"Model {model} not found in apps.{app}.models. "
                 f"Run: django-octave add-model {app} {model}"
             )
-        views_path, urls_path = write_viewset(
-            app_dir,
-            options=ViewSetOptions(
-                app_name=app,
-                model_name=model,
-                permission=options.permission,
-                filters=csv_to_list(options.filters),
-                search=csv_to_list(options.search),
-                ordering=csv_to_list(options.ordering),
-                tag=options.tag,
-                force=options.force,
-                use_multitenancy=project.use_multitenancy,
-            ),
-        )
+        with rollback_on_error(project.root):
+            views_path, urls_path = write_viewset(
+                app_dir,
+                options=ViewSetOptions(
+                    app_name=app,
+                    model_name=model,
+                    permission=options.permission,
+                    filters=csv_to_list(options.filters),
+                    search=csv_to_list(options.search),
+                    ordering=csv_to_list(options.ordering),
+                    tag=options.tag,
+                    force=options.force,
+                    use_multitenancy=project.use_multitenancy,
+                ),
+            )
     except (
         NotOctaveProjectError,
         InvalidAppNameError,

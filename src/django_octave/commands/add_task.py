@@ -18,6 +18,7 @@ from django_octave.celery_gen.task_gen import (
 from django_octave.cli import app
 from django_octave.naming import InvalidAppNameError, validate_app_name
 from django_octave.project.detect import NotOctaveProjectError, detect_project
+from django_octave.rollback import rollback_on_error
 
 err_console = Console(stderr=True)
 console = Console()
@@ -70,17 +71,18 @@ def add_task_cmd(
         project = detect_project(options.path)
         app = validate_app_name(options.app)
         name = validate_task_name(options.task_name)
-        tasks_path = write_task(
-            project.root,
-            options=TaskOptions(
-                app_name=app,
-                task_name=name,
-                bind=options.bind,
-                every=options.every,
-                crontab=options.crontab,
-                force=options.force,
-            ),
-        )
+        with rollback_on_error(project.root):
+            tasks_path = write_task(
+                project.root,
+                options=TaskOptions(
+                    app_name=app,
+                    task_name=name,
+                    bind=options.bind,
+                    every=options.every,
+                    crontab=options.crontab,
+                    force=options.force,
+                ),
+            )
     except (
         NotOctaveProjectError,
         InvalidAppNameError,

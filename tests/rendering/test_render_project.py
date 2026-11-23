@@ -356,3 +356,16 @@ def test_next_steps_for_docker_mention_the_lock_file_and_hosts(
     out = " ".join(capsys.readouterr().out.split())
     assert "uv lock" in out
     assert "DJANGO_ALLOWED_HOSTS" in out
+
+
+@pytest.mark.parametrize("multitenancy", [False, True])
+def test_render_readme_states_the_default_access_model(tmp_path: Path, multitenancy: bool) -> None:
+    ctx = ProjectContext.from_options(_options(tmp_path, multitenancy=multitenancy))
+
+    readme = (render_project(ctx) / "README.md").read_text(encoding="utf-8")
+
+    assert "## Access" in readme
+    assert "every authenticated user can read and change **every record**" in readme
+    assert "protects single objects, not list endpoints" in readme
+    assert "uv audit" in readme
+    assert ("(within their tenant)" in readme) is multitenancy

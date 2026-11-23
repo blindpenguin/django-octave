@@ -29,6 +29,8 @@ from django_octave.naming import (
     validate_model_name,
 )
 from django_octave.project.detect import NotOctaveProjectError, detect_project
+from django_octave.rollback import rollback_on_error
+from django_octave.safe_names import validate_owner_attr
 
 err_console = Console(stderr=True)
 console = Console()
@@ -95,6 +97,7 @@ def add_permission_cmd(
         force=force,
     )
     try:
+        validate_owner_attr(options.owner_attr)
         project = detect_project(options.path)
         app = validate_app_name(options.app)
         # Reuse PascalCase validator (IsOwner, IsStaffOrRead, …)
@@ -107,37 +110,38 @@ def add_permission_cmd(
             raise FileNotFoundError(
                 f"App apps.{app} not found. Run: django-octave add {app}"
             )
-        perm_path = write_permission(
-            app_dir,
-            options=PermissionOptions(
-                app_name=app,
-                class_name=name,
-                preset=preset_name,
-                owner_attr=options.owner_attr,
-                viewset=options.viewset,
-                append=options.append,
-                force=options.force,
-            ),
-        )
-        wired: str | None = None
-        if options.viewset:
-            vs = resolve_viewset_class_name(options.viewset)
-            wire_permission_to_viewset(
-                app_dir / "views.py",
-                app_name=app,
-                viewset_class=vs,
-                permission_class=name,
-                append=options.append,
+        with rollback_on_error(project.root):
+            perm_path = write_permission(
+                app_dir,
+                options=PermissionOptions(
+                    app_name=app,
+                    class_name=name,
+                    preset=preset_name,
+                    owner_attr=options.owner_attr,
+                    viewset=options.viewset,
+                    append=options.append,
+                    force=options.force,
+                ),
             )
-            wired = vs
-            if preset_name == "tenant_member" and not viewset_has_tenant_mixin(
-                app_dir / "views.py", vs
-            ):
-                err_console.print(
-                    f"[yellow]{vs} has no TenantScopedMixin, so tenant_member will "
-                    f"deny every request. Add it first in the class bases "
-                    f"(from apps.core.tenancy import TenantScopedMixin).[/yellow]"
+            wired: str | None = None
+            if options.viewset:
+                vs = resolve_viewset_class_name(options.viewset)
+                wire_permission_to_viewset(
+                    app_dir / "views.py",
+                    app_name=app,
+                    viewset_class=vs,
+                    permission_class=name,
+                    append=options.append,
                 )
+                wired = vs
+                if preset_name == "tenant_member" and not viewset_has_tenant_mixin(
+                    app_dir / "views.py", vs
+                ):
+                    err_console.print(
+                        f"[yellow]{vs} has no TenantScopedMixin, so tenant_member will "
+                        f"deny every request. Add it first in the class bases "
+                        f"(from apps.core.tenancy import TenantScopedMixin).[/yellow]"
+                    )
     except (
         NotOctaveProjectError,
         InvalidAppNameError,

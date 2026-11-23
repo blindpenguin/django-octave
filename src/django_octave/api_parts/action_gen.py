@@ -18,6 +18,12 @@ from django_octave.models_gen.cst_util import (
 )
 from django_octave.models_gen.writer import ModelWriteError
 from django_octave.naming import pascal_to_snake, pluralize
+from django_octave.safe_names import (
+    is_safe_tag,
+    validate_tag,
+    validate_url_name,
+    validate_url_path,
+)
 
 HTTP_METHODS: frozenset[str] = frozenset(
     {"get", "post", "put", "patch", "delete", "head", "options"}
@@ -223,6 +229,14 @@ def write_action(
             f"Run: django-octave add-viewset {options.app_name} …"
         )
 
+    # Free text that ends up in generated code: validate before anything is written.
+    if options.tag is not None:
+        validate_tag(options.tag)
+    if options.url_path is not None:
+        validate_url_path(options.url_path)
+    if options.url_name is not None:
+        validate_url_name(options.url_name)
+
     viewset_class = resolve_viewset_class_name(options.viewset)
     action_name = validate_action_name(options.action_name)
     methods = normalize_methods(options.methods, detail=options.detail)
@@ -258,9 +272,11 @@ def write_action(
                 f"Run: django-octave add-serializer {options.app_name} …"
             )
 
+    # A tag read from the existing viewset is untrusted text too: use it only if it is safe.
+    detected = detect_viewset_tag(source, viewset_class)
     tag = (
         options.tag
-        or detect_viewset_tag(source, viewset_class)
+        or (detected if detected and is_safe_tag(detected) else None)
         or default_tag_for_viewset(viewset_class)
     )
 

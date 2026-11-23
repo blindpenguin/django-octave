@@ -109,3 +109,28 @@ def test_dependabot_keeps_github_actions_current() -> None:
 
     ecosystems = {u["package-ecosystem"]: u for u in data["updates"]}
     assert ecosystems["github-actions"]["directory"] == "/"
+
+
+def test_audit_runs_weekly_on_dependency_changes_and_on_demand() -> None:
+    triggers = _triggers(_load(ROOT / ".github" / "workflows" / "audit.yml"))
+
+    assert triggers["schedule"] == [{"cron": "17 5 * * 1"}]
+    assert triggers["pull_request"]["paths"] == ["uv.lock", "pyproject.toml"]
+    assert "workflow_dispatch" in triggers
+
+
+def test_audit_job_audits_the_locked_dependencies_with_read_only_access() -> None:
+    data = _load(ROOT / ".github" / "workflows" / "audit.yml")
+    job = data["jobs"]["uv-audit"]
+    commands = [step["run"] for step in job["steps"] if "run" in step]
+
+    assert commands == ["uv audit --locked"]
+    assert job["permissions"] == {"contents": "read"}
+    assert "secrets." not in (ROOT / ".github" / "workflows" / "audit.yml").read_text(encoding="utf-8")
+
+
+def test_audit_is_not_part_of_the_release_gate() -> None:
+    for name in ("ci.yml", "release.yml"):
+        text = (ROOT / ".github" / "workflows" / name).read_text(encoding="utf-8")
+        assert "uv audit" not in text, f"{name} must not depend on the dependency audit"
+        assert "audit.yml" not in text, name

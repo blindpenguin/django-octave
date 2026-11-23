@@ -80,6 +80,12 @@ Send header `X-Tenant-ID: <tenant-uuid>` on API requests.
 Writes without a resolved tenant fail closed; reads return empty querysets.
 {% endif %}
 
+## Access
+
+By default every authenticated user can read and change **every record** of the generated models{% if use_multitenancy %} (within their tenant){% endif %}, and the API docs are admin-only in production. Add ownership or role rules before exposing real data: see "Who can access what" in the django-octave docs (Concepts → Security). Note that the `owner` permission preset protects single objects, not list endpoints.
+
+Run `uv lock` and `uv audit` to pin and check dependencies.
+
 ## Tests
 
 ```bash

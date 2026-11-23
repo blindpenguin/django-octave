@@ -22,6 +22,7 @@ from django_octave.models_gen.cst_util import (
     upsert_class,
 )
 from django_octave.naming import pascal_to_snake
+from django_octave.safe_names import validate_tag
 from django_octave.tenancy import (
     TENANCY_IMPORT,
     ensure_tenancy_module,
@@ -251,6 +252,8 @@ def write_viewset(
 
     Returns ``(views.py path, urls.py path)``.
     """
+    if options.tag is not None:
+        validate_tag(options.tag)  # before anything is written
     perm_module, permission = resolve_permission(
         app_dir, options.app_name, options.permission
     )

@@ -28,7 +28,7 @@ uv run django-octave add-viewset blog Post --permission IsOwner --force
 
 | Preset | Notes |
 |--------|--------|
-| `owner` | Object owner check; fail closed if attribute missing |
+| `owner` | Object owner check (read/update/delete of one object; fails closed if the attribute is missing). **Does not filter list endpoints**; see [Who can access what](../concepts/security.md#who-can-access-what) |
 | `staff_or_read` | Staff write / read for others |
 | `auth_or_read` | Authenticated write / read for others |
 | `tenant_member` | Multitenancy projects only |
@@ -46,3 +46,5 @@ uv run django-octave add-viewset blog Post --permission IsOwner --force
 ## What it writes
 
 `apps/<app>/permissions.py` (+ optional `views.py` wiring).
+
+See [Who can access what](../concepts/security.md#who-can-access-what) for the defaults and for what each preset does and does not protect.

@@ -12,6 +12,7 @@ from django_octave.models_gen.cst_util import (
     ensure_import_lines,
     upsert_class,
 )
+from django_octave.safe_names import validate_owner_attr
 
 PRESETS: frozenset[str] = frozenset(
     {"owner", "staff_or_read", "auth_or_read", "tenant_member"}
@@ -135,6 +136,7 @@ def write_permission(
     options: PermissionOptions,
 ) -> Path:
     """Upsert permission class into ``app_dir/permissions.py``."""
+    validate_owner_attr(options.owner_attr)  # before anything is written
     path = app_dir / "permissions.py"
     class_src = build_permission_class(
         options.class_name,
