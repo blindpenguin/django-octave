@@ -34,6 +34,10 @@ Clients cannot choose a tenant through the payload: generated serializers never 
 
 Views that are not tenant-scoped (token endpoints, the OpenAPI schema, the admin) do not need the header.
 
+## The user list
+
+`GET /api/users/` (created by `add-frontend`) lists only users who are members of the current tenant, with the same `X-Tenant-ID` rules as any other tenant endpoint. Without multitenancy it lists all users to any authenticated user, as before.
+
 ## Writing your own viewset
 
 Put the mixin **first** in the bases. Keep `queryset = Model.objects.all()`; the mixin rebuilds it for each request.
@@ -57,6 +61,7 @@ The `tenant_member` permission preset needs the mixin on the viewset. `add-permi
 
 - The Django admin uses a browser session and cannot send `X-Tenant-ID`, so tenant-aware models show no rows there. Use `all_objects` in a custom admin `get_queryset` if you need it.
 - Registration (`add-frontend --register`) does not create a membership; a new user needs one before they can use tenant endpoints.
+- **The generated SPA does not send `X-Tenant-ID` yet** and has no tenant picker. With `--multitenancy --frontend`, tenant endpoints (including `GET /api/users/` and generated CRUD pages) answer `403` until you add the header to the SPA's API client. Choosing and remembering a tenant in the UI is a separate feature.
 
 ## Upgrading an existing project
 
@@ -67,6 +72,8 @@ Projects generated before `TenantScopedMixin` existed bound the tenant in Django
 3. In `apps/core/models.py`, add the foreign-tenant check to `TenantAwareModel.save()` (compare with a freshly generated project).
 4. In every viewset for a tenant-aware model, add `TenantScopedMixin` as the first base class and `from apps.core.tenancy import TenantScopedMixin`.
 5. Replace skipped API tests with the ones from `django-octave add-test <app> <Model> --force`.
+6. Optional: change the `related_name` of `TenantAwareModel.tenant` to `"%(app_label)s_%(class)s_set"`, so two apps can have a tenant-aware model with the same class name. Django will then generate one harmless `AlterField` migration per tenant-aware model (no database change).
+7. If you used `add-frontend` before: run `add-frontend --force` to regenerate `apps/users/auth_api.py` with the tenant-scoped user list and login/register rate limits. It overwrites that file, so keep your own edits elsewhere.
 
 ## Practical notes
 

@@ -14,6 +14,14 @@ from apps.notes.views import NoteViewSet
 from apps.users.models import User
 
 PASSWORD = "pw-Secret-123"
+
+
+@pytest.fixture(autouse=True)
+def _reset_throttle_counters():
+    """Token logins are rate limited (auth scope); start every test with a clean slate."""
+    from django.core.cache import cache
+
+    cache.clear()
 FORBIDDEN_BODY = {"detail": "A valid X-Tenant-ID header is required."}
 
 

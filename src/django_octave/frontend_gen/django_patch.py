@@ -5,6 +5,13 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from jinja2 import Environment, FileSystemLoader, StrictUndefined
+
+from django_octave.project.detect import detect_project
+from django_octave.tenancy import ensure_tenancy_module
+
+AUTH_API_TEMPLATES = Path(__file__).resolve().parent.parent / "templates" / "frontend_django"
+
 _ENV_MARKER_BEGIN = "# --- django-octave frontend begin ---"
 _ENV_MARKER_END = "# --- django-octave frontend end ---"
 _URLS_IMPORT_BEGIN = "# --- django-octave frontend imports begin ---"
@@ -14,88 +21,6 @@ _DEFAULT_CORS_ORIGINS = (
     "http://localhost:5173,http://127.0.0.1:5173,"
     "http://localhost:8080,http://127.0.0.1:8080"
 )
-
-AUTH_API_MODULE = '''"""Auth API for the Vue frontend (email JWT + optional register)."""
-
-from __future__ import annotations
-
-from django.contrib.auth import get_user_model
-from django.contrib.auth.password_validation import validate_password
-from rest_framework import serializers, status
-from rest_framework.generics import ListAPIView
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from rest_framework_simplejwt.views import TokenObtainPairView
-
-User = get_user_model()
-
-
-class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """JWT obtain using the custom user email field as username."""
-
-
-class EmailTokenObtainPairView(TokenObtainPairView):
-    serializer_class = EmailTokenObtainPairSerializer
-
-
-class UserListSerializer(serializers.ModelSerializer):
-    """Minimal user row for FK selects in the SPA."""
-
-    label = serializers.SerializerMethodField()
-
-    class Meta:
-        model = User
-        fields = ("id", "email", "label")
-
-    def get_label(self, obj: object) -> str:
-        return str(obj)
-
-
-class UserListView(ListAPIView):
-    """Authenticated list of users for frontend FK dropdowns."""
-
-    permission_classes = [IsAuthenticated]
-    serializer_class = UserListSerializer
-    queryset = User.objects.all().order_by("email")
-
-
-class RegisterSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-    password = serializers.CharField(write_only=True)
-    password_confirm = serializers.CharField(write_only=True)
-
-    def validate_email(self, value: str) -> str:
-        email = value.strip().lower()
-        if User.objects.filter(email__iexact=email).exists():
-            raise serializers.ValidationError("A user with this email already exists.")
-        return email
-
-    def validate(self, attrs: dict) -> dict:
-        if attrs["password"] != attrs["password_confirm"]:
-            raise serializers.ValidationError(
-                {"password_confirm": "Passwords do not match."}
-            )
-        validate_password(attrs["password"])
-        return attrs
-
-    def create(self, validated_data: dict) -> object:
-        return User.objects.create_user(
-            email=validated_data["email"],
-            password=validated_data["password"],
-        )
-
-
-class RegisterView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):  # type: ignore[no-untyped-def]
-        serializer = RegisterSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        return Response({"email": user.email}, status=status.HTTP_201_CREATED)
-'''
 
 
 class DjangoPatchError(ValueError):
@@ -176,6 +101,38 @@ def patch_env_cors(env_path: Path, *, force: bool = False) -> None:
     env_path.write_text("".join(out), encoding="utf-8")
 
 
+_NUM_PROXIES_BLOCK = """
+# The SPA's nginx is one reverse proxy in front of Django. This lets rate limits
+# tell clients apart by their real address (0 = Django is exposed directly).
+DJANGO_NUM_PROXIES=1
+"""
+
+
+def patch_env_proxies(env_path: Path) -> None:
+    """Append ``DJANGO_NUM_PROXIES=1`` unless the file already sets it."""
+    if not env_path.exists():
+        env_path.write_text(_NUM_PROXIES_BLOCK.lstrip("\n"), encoding="utf-8")
+        return
+    text = env_path.read_text(encoding="utf-8")
+    if any(line.startswith("DJANGO_NUM_PROXIES=") for line in text.splitlines()):
+        return
+    if text and not text.endswith("\n"):
+        text += "\n"
+    env_path.write_text(text + _NUM_PROXIES_BLOCK, encoding="utf-8")
+
+
+def render_auth_api(*, use_multitenancy: bool) -> str:
+    """Render ``apps/users/auth_api.py`` (tenant-scoped user list when multitenant)."""
+    env = Environment(
+        loader=FileSystemLoader(AUTH_API_TEMPLATES),
+        undefined=StrictUndefined,
+        keep_trailing_newline=True,
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+    return env.get_template("auth_api.py.j2").render(use_multitenancy=use_multitenancy)
+
+
 def write_auth_api(root: Path, *, force: bool = False) -> Path:
     """Write ``apps/users/auth_api.py`` with email JWT, user list, RegisterView."""
     users = root / "apps" / "users"
@@ -187,7 +144,10 @@ def write_auth_api(root: Path, *, force: bool = False) -> Path:
         if "class UserListView" in existing and "def get_label" in existing:
             return path
         # Older auth_api — upgrade in place (UserListView / label)
-    path.write_text(AUTH_API_MODULE, encoding="utf-8")
+    use_multitenancy = detect_project(root).use_multitenancy
+    if use_multitenancy:
+        ensure_tenancy_module(root / "apps")
+    path.write_text(render_auth_api(use_multitenancy=use_multitenancy), encoding="utf-8")
     return path
 
 
@@ -230,34 +190,29 @@ def patch_urls(root: Path, *, include_register: bool, force: bool = False) -> Pa
         count=1,
     )
 
-    # Insert frontend imports after simplejwt import
+    # Insert frontend imports after the throttle import (first-party, sorts before
+    # apps.users) when present, else after the simplejwt import.
     refresh_import = "from rest_framework_simplejwt.views import TokenRefreshView\n"
+    throttle_import = "from apps.core.throttling import throttled\n"
     if refresh_import not in text:
         raise DjangoPatchError("Could not find simplejwt TokenRefreshView import")
-    insert_at = text.index(refresh_import) + len(refresh_import)
+    anchor = throttle_import if throttle_import in text else refresh_import
+    insert_at = text.index(anchor) + len(anchor)
     text = (
         text[:insert_at]
         + _import_block(include_register=wire_register)
         + text[insert_at:]
     )
 
-    # Replace stock obtain view with email obtain view
-    text = re.sub(
-        r'path\(\s*"api/auth/token/"\s*,\s*TokenObtainPairView\.as_view\(\)\s*,'
-        r'\s*name\s*=\s*"token_obtain_pair"\s*\)',
+    # Replace the obtain view (stock, throttled or already patched) with the email one.
+    text, replaced = re.subn(
+        r'path\(\s*"api/auth/token/"\s*,\s*[^,]+,\s*name\s*=\s*"token_obtain_pair"\s*\)',
         'path("api/auth/token/", EmailTokenObtainPairView.as_view(), '
         'name="token_obtain_pair")',
         text,
     )
-    if "EmailTokenObtainPairView" not in text:
-        if 'path("api/auth/token/"' not in text:
-            raise DjangoPatchError("Could not find api/auth/token/ path")
-        text = re.sub(
-            r'path\(\s*"api/auth/token/"\s*,\s*[^,]+,\s*name\s*=\s*"token_obtain_pair"\s*\)',
-            'path("api/auth/token/", EmailTokenObtainPairView.as_view(), '
-            'name="token_obtain_pair")',
-            text,
-        )
+    if not replaced:
+        raise DjangoPatchError("Could not find api/auth/token/ path")
 
     # Remove managed register / users list paths, then re-add
     text = re.sub(
@@ -320,6 +275,7 @@ def patch_django_for_frontend(
 
     env_example = root / ".env.example"
     patch_env_cors(env_example, force=force)
+    patch_env_proxies(env_example)
     written.append(env_example)
 
     auth_api = write_auth_api(root, force=force)

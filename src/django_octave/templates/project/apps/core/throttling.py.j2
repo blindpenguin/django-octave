@@ -1,0 +1,23 @@
+"""Stricter rate limit for credential endpoints (token obtain/refresh, signup).
+
+The rate is ``DEFAULT_THROTTLE_RATES["auth"]`` in ``config/settings/base.py``.
+Behind a reverse proxy set ``DJANGO_NUM_PROXIES`` to the number of proxies, so
+clients are told apart by their real address instead of the proxy's.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+
+from django.http.response import HttpResponseBase
+from rest_framework.throttling import AnonRateThrottle
+from rest_framework.views import APIView
+
+
+class AuthRateThrottle(AnonRateThrottle):
+    scope = "auth"
+
+
+def throttled(view_class: type[APIView]) -> Callable[..., HttpResponseBase]:
+    """``view_class.as_view()`` limited by :class:`AuthRateThrottle`."""
+    return view_class.as_view(throttle_classes=[AuthRateThrottle])

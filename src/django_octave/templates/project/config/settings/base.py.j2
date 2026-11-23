@@ -118,7 +118,9 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
     ),
-    "DEFAULT_THROTTLE_RATES": {"anon": "60/min", "user": "600/min"},
+    "DEFAULT_THROTTLE_RATES": {"anon": "60/min", "user": "600/min", "auth": "10/min"},
+    # Number of reverse proxies in front of the app (0 = use the connecting address).
+    "NUM_PROXIES": env.int("DJANGO_NUM_PROXIES", default=0),
 }
 
 SPECTACULAR_SETTINGS = {

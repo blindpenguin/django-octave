@@ -1,0 +1,40 @@
+"""Rate limits behind one reverse proxy (run with DJANGO_NUM_PROXIES=1). Copied into tests/."""
+
+from __future__ import annotations
+
+import pytest
+from django.core.cache import cache
+from rest_framework.test import APIClient
+
+
+@pytest.fixture(autouse=True)
+def _reset_throttle_counters():
+    cache.clear()
+
+
+def _login_attempt(client: APIClient, forwarded_for: str) -> int:
+    return client.post(
+        "/api/auth/token/",
+        {"email": "nobody@example.com", "password": "wrong"},
+        format="json",
+        HTTP_X_FORWARDED_PROTO="https",
+        HTTP_X_FORWARDED_FOR=forwarded_for,
+    ).status_code
+
+
+def test_spoofed_forwarded_for_prefix_cannot_dodge_the_limit(db) -> None:
+    client = APIClient()
+
+    # nginx appends the real client address last; the client controls only what comes before.
+    codes = [_login_attempt(client, f"spoof-{i}, 203.0.113.9") for i in range(11)]
+
+    assert 429 not in codes[:10]
+    assert codes[10] == 429
+
+
+def test_different_real_clients_have_separate_budgets(db) -> None:
+    client = APIClient()
+    for i in range(11):
+        _login_attempt(client, f"spoof-{i}, 203.0.113.9")
+
+    assert _login_attempt(client, "x, 203.0.113.10") != 429

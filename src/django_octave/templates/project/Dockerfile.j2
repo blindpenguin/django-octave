@@ -1,5 +1,13 @@
 # syntax=docker/dockerfile:1
-FROM python:{{ python_version }}-slim AS base
+#
+# Stages:
+#   runtime  (default, last)  production image: no compilers, no uv, no dev packages
+#   dev                       used by docker-compose.yml (bind mount + `uv run`)
+#
+#   docker build .                  -> runtime
+#   docker build --target dev .     -> dev
+
+FROM python:{{ python_version }}-slim AS dev
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -28,3 +36,64 @@ RUN uv sync
 EXPOSE 8000
 
 CMD ["uv", "run", "gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
+
+
+FROM python:{{ python_version }}-slim AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential \
+{% if is_mariadb %}
+        default-libmysqlclient-dev pkg-config \
+{% endif %}
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:0.13 /uv /usr/local/bin/uv
+
+# uv.lock is optional: with it the build is exact (--locked), without it uv resolves.
+COPY pyproject.toml uv.lock* ./
+RUN if [ -f uv.lock ]; then \
+        uv sync --locked --no-dev --no-install-project; \
+    else \
+        uv sync --no-dev --no-install-project; \
+    fi
+
+
+FROM python:{{ python_version }}-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/app/.venv/bin:$PATH"
+
+WORKDIR /app
+{% if is_mariadb %}
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libmariadb3 \
+    && rm -rf /var/lib/apt/lists/*
+{% endif %}
+
+RUN useradd --create-home --uid 1000 app && chown app:app /app
+
+COPY --from=builder --chown=app:app /app/.venv /app/.venv
+COPY --chown=app:app . .
+
+USER app
+
+# WhiteNoise's manifest storage needs collected static files. The variables below
+# exist only for this command (placeholders, not secrets; nothing is persisted in ENV
+# and no database is contacted). A failure here fails the build.
+RUN DJANGO_SETTINGS_MODULE=config.settings.prod \
+    DJANGO_SECRET_KEY=build-only-placeholder-not-a-secret-never-used-at-runtime-0123456789 \
+    DJANGO_ALLOWED_HOSTS=build.invalid \
+    DATABASE_URL=sqlite:////tmp/build-only.sqlite3 \
+    python manage.py collectstatic --noinput
+
+EXPOSE 8000
+
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]

@@ -100,7 +100,7 @@ class TenantAwareModel(TimeStampedModel):
     tenant = models.ForeignKey(
         Tenant,
         on_delete=models.CASCADE,
-        related_name="%(class)ss",
+        related_name="%(app_label)s_%(class)s_set",
     )
 
     objects = TenantManager()

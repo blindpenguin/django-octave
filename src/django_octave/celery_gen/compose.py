@@ -27,7 +27,9 @@ def build_compose_services(*, has_db: bool, has_web: bool) -> str:
       - "127.0.0.1:6379:6379"
 
   worker:
-    build: .
+    build:
+      context: .
+      target: dev
     command: uv run celery -A config worker -l INFO
     env_file:
       - .env
@@ -41,7 +43,9 @@ def build_compose_services(*, has_db: bool, has_web: bool) -> str:
       CELERY_RESULT_BACKEND: redis://redis:6379/0
 
   beat:
-    build: .
+    build:
+      context: .
+      target: dev
     command: uv run celery -A config beat -l INFO
     env_file:
       - .env

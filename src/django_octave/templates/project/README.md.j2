@@ -38,8 +38,14 @@ docker compose up --build
 ### Docker (prod-oriented)
 
 ```bash
+uv lock                      # once: commit uv.lock so image builds are reproducible
 docker compose -f docker-compose.prod.yml up --build
 ```
+
+The production image (the default `docker build .` target) has no dev dependencies, build
+tools or `uv`; it runs `collectstatic` at build time and starts Gunicorn from its virtualenv.
+Set `DJANGO_ALLOWED_HOSTS` (and a real `DJANGO_SECRET_KEY`) in `.env`: prod settings refuse to
+start without them. The dev Compose file builds the `dev` target instead.
 {% else %}
 ```bash
 uv run python manage.py runserver
@@ -48,7 +54,8 @@ uv run python manage.py runserver
 
 ## API docs
 
-With the server running:
+With the server running (locally they are open; with `config.settings.prod` they require a
+logged-in admin: sign in at `/admin/` first):
 
 - Swagger UI: http://127.0.0.1:8000/api/schema/swagger-ui/
 - ReDoc: http://127.0.0.1:8000/api/schema/redoc/
@@ -60,6 +67,10 @@ JWT endpoints:
 
 - `POST /api/auth/token/`
 - `POST /api/auth/token/refresh/`
+
+These endpoints are rate limited (`DEFAULT_THROTTLE_RATES["auth"]`, default 10/min per client).
+Behind a reverse proxy set `DJANGO_NUM_PROXIES` to the number of proxies so clients are told
+apart by their real address.
 
 {% if use_multitenancy %}
 ## Multitenancy

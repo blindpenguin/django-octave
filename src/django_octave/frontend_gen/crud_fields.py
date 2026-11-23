@@ -6,14 +6,14 @@ from pathlib import Path
 
 from django_octave.frontend_gen.crud_discover import discover_app_resources
 from django_octave.frontend_gen.crud_types import CrudField, CrudFieldKind, ResourceSpec
+from django_octave.frontend_gen.str_label import (
+    parse_simple_str_attr,
+    str_method_is_complex,
+)
 from django_octave.inspect.model_fields import (
     ModelFieldInfo,
     inspect_model_fields_path,
     resolve_related_app_and_model,
-)
-from django_octave.frontend_gen.str_label import (
-    parse_simple_str_attr,
-    str_method_is_complex,
 )
 from django_octave.models_gen.writer import ModelWriteError
 

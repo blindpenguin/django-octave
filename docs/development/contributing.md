@@ -9,11 +9,14 @@ uv run ruff check src tests
 uv run ruff format src tests
 ```
 
-End-to-end tests generate a real project and run `uv sync` (network, ~10 s). They are skipped by default:
+End-to-end tests generate real projects and run `uv sync` (network). They are skipped by default:
 
 ```bash
-OCTAVE_E2E=1 uv run pytest -m e2e
+OCTAVE_E2E=1 uv run pytest -m e2e              # multitenancy + production-settings suites (~1 min)
+OCTAVE_E2E_DOCKER=1 uv run pytest tests/e2e/test_docker_image.py   # builds real images (~1 min, needs a Docker daemon)
 ```
+
+The Docker suite builds the production image for SQLite, Postgres and MariaDB and removes every image and container it creates. It skips itself when Docker is not available.
 
 ## Documentation
 

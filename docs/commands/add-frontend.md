@@ -35,6 +35,12 @@ Interactive runs prompt for frontend (on `new`), then registration and CRUD when
 | `--force` | Refresh an existing `frontend/` (also refreshes CRUD pages when `--crud`) |
 | `--path` | Project root (default: `.`) |
 
+## Security notes
+
+- Login, token refresh and registration are rate limited (default 10/min per client). `.env.example` gets `DJANGO_NUM_PROXIES=1`, because the SPA's nginx is a reverse proxy; see [Security](../concepts/security.md#rate-limits).
+- `GET /api/users/` is tenant-scoped in multitenancy projects (see [Multitenancy](../concepts/multitenancy.md#the-user-list)).
+- Tokens live in `localStorage`; the SPA's nginx sends basic security headers. Details in [Security](../concepts/security.md#the-generated-spa).
+
 ## What it writes
 
 - `frontend/` — Vite + Vue + Nuxt UI shell (login, authenticated home; optional register)

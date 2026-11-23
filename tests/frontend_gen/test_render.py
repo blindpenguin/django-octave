@@ -97,3 +97,41 @@ def test_render_frontend_rejects_empty_names(tmp_path: Path) -> None:
         render_frontend(tmp_path / "frontend", project_name="", project_slug="x")
     with pytest.raises(FrontendSetupError):
         render_frontend(tmp_path / "frontend", project_name="X", project_slug="")
+
+
+def _nginx_conf(tmp_path: Path) -> str:
+    frontend = tmp_path / "frontend"
+    render_frontend(
+        frontend, project_name="Demo", project_slug="demo", include_register=False
+    )
+    return (frontend / "nginx.conf").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    "header",
+    [
+        'add_header X-Content-Type-Options "nosniff" always;',
+        'add_header X-Frame-Options "DENY" always;',
+        'add_header Referrer-Policy "same-origin" always;',
+    ],
+)
+def test_render_nginx_sends_security_headers_on_every_response(
+    tmp_path: Path, header: str
+) -> None:
+    assert header in _nginx_conf(tmp_path)
+
+
+def test_render_nginx_defines_headers_at_server_level_only(tmp_path: Path) -> None:
+    conf = _nginx_conf(tmp_path)
+    locations = conf.split("location ", 1)[1]  # everything from the first location on
+
+    # nginx drops inherited add_header in a location that defines its own.
+    assert "add_header" not in locations
+
+
+def test_render_nginx_keeps_proxy_and_spa_fallback(tmp_path: Path) -> None:
+    conf = _nginx_conf(tmp_path)
+
+    assert "proxy_pass http://web:8000;" in conf
+    assert "proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;" in conf
+    assert "try_files $uri $uri/ /index.html;" in conf

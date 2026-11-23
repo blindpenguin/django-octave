@@ -53,6 +53,7 @@ nav:
   - Concepts:
       - Project layout: concepts/layout.md
       - Docker: concepts/docker.md
+      - Security: concepts/security.md
       - Multitenancy: concepts/multitenancy.md
       - Celery: concepts/celery.md
   - Commands:

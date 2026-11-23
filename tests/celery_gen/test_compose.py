@@ -71,3 +71,10 @@ def test_inject_refuses_unmarked_services(tmp_path: Path) -> None:
 
 def test_inject_missing_file(tmp_path: Path) -> None:
     assert inject_compose_services(tmp_path / "missing.yml") is False
+
+
+def test_celery_services_build_the_dev_target() -> None:
+    block = build_compose_services(has_db=True, has_web=True)
+
+    assert block.count("build:\n      context: .\n      target: dev\n") == 2  # worker + beat
+    assert "build: ." not in block

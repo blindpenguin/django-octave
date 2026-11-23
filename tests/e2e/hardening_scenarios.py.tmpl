@@ -1,0 +1,186 @@
+"""Production-settings scenarios for a generated project. Copied into the project's tests/.
+
+Run with ``DJANGO_SETTINGS_MODULE=config.settings.prod`` after ``collectstatic``.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import re
+
+import pytest
+from django.core.cache import cache
+from rest_framework.test import APIClient
+
+from apps.users.models import User
+
+PASSWORD = "pw-Secret-123"
+MULTITENANT = importlib.util.find_spec("apps.core.tenancy") is not None
+DOC_URLS = ["/api/schema/", "/api/schema/swagger-ui/", "/api/schema/redoc/"]
+
+
+@pytest.fixture(autouse=True)
+def _reset_throttle_counters():
+    cache.clear()
+
+
+def _api(**extra: str) -> APIClient:
+    # Prod redirects plain HTTP; this header marks the request as already HTTPS.
+    return APIClient(HTTP_X_FORWARDED_PROTO="https", **extra)
+
+
+def _logged_in(user: User) -> APIClient:
+    """Browser-style session login (what the admin-only API docs use)."""
+    client = _api()
+    client.force_login(user)
+    return client
+
+
+def _authenticated(user: User) -> APIClient:
+    """API client authenticated as ``user`` (the API itself uses JWT, not sessions)."""
+    client = _api()
+    client.force_authenticate(user=user)
+    return client
+
+
+def test_admin_login_renders_with_collected_static_files() -> None:
+    response = _api().get("/admin/login/")
+
+    assert response.status_code == 200
+    assert re.search(r"/static/admin/css/base\.[0-9a-f]{12}\.css", response.content.decode())
+
+
+@pytest.mark.parametrize("url", DOC_URLS)
+def test_api_docs_hide_from_anonymous_users(db, url: str) -> None:
+    response = _api().get(url)
+
+    assert response.status_code in {401, 403}
+    assert b"openapi" not in response.content.lower()
+
+
+@pytest.mark.parametrize("url", DOC_URLS)
+def test_api_docs_hide_from_non_admin_users(db, url: str) -> None:
+    user = User.objects.create_user("member@example.com", PASSWORD)
+
+    response = _logged_in(user).get(url)
+
+    assert response.status_code == 403
+
+
+@pytest.mark.parametrize("url", DOC_URLS)
+def test_api_docs_open_for_a_logged_in_admin(db, url: str) -> None:
+    admin = User.objects.create_superuser("admin@example.com", PASSWORD)
+
+    response = _logged_in(admin).get(url)
+
+    assert response.status_code == 200
+
+
+def test_token_obtain_is_rate_limited_per_client(db) -> None:
+    client = _api()
+    body = {"email": "nobody@example.com", "password": "wrong"}
+
+    codes = [client.post("/api/auth/token/", body, format="json") for _ in range(11)]
+
+    assert all(r.status_code != 429 for r in codes[:10])
+    assert codes[10].status_code == 429
+    assert int(codes[10].headers["Retry-After"]) > 0
+
+
+def test_token_refresh_is_rate_limited_per_client(db) -> None:
+    client = _api()
+
+    codes = [
+        client.post("/api/auth/token/refresh/", {"refresh": "x"}, format="json").status_code
+        for _ in range(11)
+    ]
+
+    assert 429 not in codes[:10]
+    assert codes[10] == 429
+
+
+def test_register_is_rate_limited_per_client(db) -> None:
+    client = _api()
+
+    codes = [
+        client.post(
+            "/api/auth/register/",
+            {"email": f"user{i}@example.com", "password": "short", "password_confirm": "x"},
+            format="json",
+        ).status_code
+        for i in range(11)
+    ]
+
+    assert 429 not in codes[:10]
+    assert codes[10] == 429
+
+
+def test_register_and_token_share_one_auth_budget(db) -> None:
+    client = _api()
+    for i in range(5):
+        client.post("/api/auth/token/", {"email": "a@example.com", "password": "x"}, format="json")
+
+    # 5 used on token + 5 on register = 10; the 11th request overall is limited.
+    codes = [
+        client.post(
+            "/api/auth/register/",
+            {"email": f"u{i}@example.com", "password": "x", "password_confirm": "y"},
+            format="json",
+        ).status_code
+        for i in range(6)
+    ]
+
+    assert codes[-1] == 429
+    assert 429 not in codes[:5]
+
+
+@pytest.mark.skipif(not MULTITENANT, reason="plain project")
+def test_user_list_shows_only_members_of_the_current_tenant(db) -> None:
+    from apps.core.models import Membership, Tenant
+
+    a1 = User.objects.create_user("a1@example.com", PASSWORD)
+    a2 = User.objects.create_user("a2@example.com", PASSWORD)
+    b1 = User.objects.create_user("b1@example.com", PASSWORD)
+    User.objects.create_user("nobody@example.com", PASSWORD)
+    tenant_a = Tenant.objects.create(name="A", slug="a")
+    tenant_b = Tenant.objects.create(name="B", slug="b")
+    for user, tenant in ((a1, tenant_a), (a2, tenant_a), (b1, tenant_b)):
+        Membership.objects.create(user=user, tenant=tenant)
+    client = _authenticated(a1)
+
+    response = client.get("/api/users/", HTTP_X_TENANT_ID=str(tenant_a.id))
+
+    data = response.json()
+    rows = data["results"] if isinstance(data, dict) else data
+    assert response.status_code == 200
+    assert sorted(r["email"] for r in rows) == ["a1@example.com", "a2@example.com"]
+    assert sorted(rows[0]) == ["email", "id", "label"]
+
+
+@pytest.mark.skipif(not MULTITENANT, reason="plain project")
+def test_user_list_requires_a_tenant_the_user_belongs_to(db) -> None:
+    from apps.core.models import Membership, Tenant
+
+    a1 = User.objects.create_user("a1@example.com", PASSWORD)
+    tenant_a = Tenant.objects.create(name="A", slug="a")
+    tenant_b = Tenant.objects.create(name="B", slug="b")
+    Membership.objects.create(user=a1, tenant=tenant_a)
+    client = _authenticated(a1)
+
+    assert client.get("/api/users/").status_code == 403
+    assert client.get("/api/users/", HTTP_X_TENANT_ID=str(tenant_b.id)).status_code == 403
+    assert _api().get("/api/users/").status_code in {401, 403}
+
+
+@pytest.mark.skipif(MULTITENANT, reason="multitenancy project")
+def test_user_list_is_unchanged_without_multitenancy(db) -> None:
+    me = User.objects.create_user("me@example.com", PASSWORD)
+    User.objects.create_user("other@example.com", PASSWORD)
+
+    response = _authenticated(me).get("/api/users/")
+
+    data = response.json()
+    rows = data["results"] if isinstance(data, dict) else data
+    assert response.status_code == 200
+    assert sorted(r["email"] for r in rows) == ["me@example.com", "other@example.com"]
+    assert _api().get("/api/users/").status_code in {401, 403}

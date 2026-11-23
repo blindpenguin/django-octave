@@ -35,7 +35,11 @@ def print_next_steps(ctx: ProjectContext) -> None:
                 "",
                 "### Docker (prod-oriented)",
                 "",
-                "```bash\ndocker compose -f docker-compose.prod.yml up --build\n```",
+                "```bash\nuv lock   # commit uv.lock for reproducible image builds\n"
+                "docker compose -f docker-compose.prod.yml up --build\n```",
+                "",
+                "Set `DJANGO_ALLOWED_HOSTS` and a real `DJANGO_SECRET_KEY` in `.env` first: "
+                "prod settings refuse to start without them.",
                 "",
             ]
         )
