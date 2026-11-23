@@ -55,7 +55,9 @@ def add_frontend_crud_cmd(
     ] = None,
 ) -> None:
     """Generate list/detail/create/edit Vue pages for a DRF ModelViewSet."""
-    from django_octave.prompts.add_frontend_crud import resolve_add_frontend_crud_options
+    from django_octave.prompts.add_frontend_crud import (
+        resolve_add_frontend_crud_options,
+    )
 
     options = resolve_add_frontend_crud_options(
         app=app_name,

@@ -9,6 +9,7 @@ from pathlib import Path
 from django_octave.options import DatabaseChoice
 from django_octave.prompts.new_project import NewProjectOptions
 from django_octave.rendering import versions
+from django_octave.safe_names import validate_project_name
 
 _SLUG_RE = re.compile(r"[^a-z0-9_]+")
 
@@ -71,13 +72,14 @@ class ProjectContext:
 
     @classmethod
     def from_options(cls, options: NewProjectOptions) -> ProjectContext:
-        slug = normalize_slug(options.name)
+        name = validate_project_name(options.name)  # templates copy it into source files
+        slug = normalize_slug(name)
         target = (options.path.expanduser().resolve() / slug)
         packages = list(versions.ALWAYS_ON_DEPENDENCIES) + database_dependencies(
             options.database
         )
         return cls(
-            project_name=options.name,
+            project_name=name,
             project_slug=slug,
             target_dir=target,
             database=options.database,

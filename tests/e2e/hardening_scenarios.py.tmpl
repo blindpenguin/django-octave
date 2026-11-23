@@ -184,3 +184,40 @@ def test_user_list_is_unchanged_without_multitenancy(db) -> None:
     assert response.status_code == 200
     assert sorted(r["email"] for r in rows) == ["me@example.com", "other@example.com"]
     assert _api().get("/api/users/").status_code in {401, 403}
+
+
+def _register(email: str, password: str, confirm: str | None = None):
+    return _api().post(
+        "/api/auth/register/",
+        {"email": email, "password": password, "password_confirm": confirm or password},
+        format="json",
+    )
+
+
+def test_register_rejects_a_password_similar_to_the_email(db) -> None:
+    response = _register("alice@example.com", "alice@example")
+
+    assert response.status_code == 400
+    assert "too similar" in " ".join(response.json()["password"])
+    assert not User.objects.filter(email="alice@example.com").exists()
+
+
+def test_register_reports_weak_passwords_under_the_password_key(db) -> None:
+    response = _register("bob@example.com", "password123")
+
+    assert response.status_code == 400
+    assert list(response.json()) == ["password"]
+    assert not User.objects.filter(email="bob@example.com").exists()
+
+
+def test_register_accepts_a_strong_password_and_keeps_the_other_error_shapes(db) -> None:
+    assert _register("carol@example.com", "Str0ng-pass-123").status_code == 201
+    assert User.objects.filter(email="carol@example.com").exists()
+
+    duplicate = _register("carol@example.com", "Str0ng-pass-123")
+    mismatch = _register("dave@example.com", "Str0ng-pass-123", "other-pass-456")
+
+    assert duplicate.status_code == 400
+    assert list(duplicate.json()) == ["email"]
+    assert mismatch.status_code == 400
+    assert list(mismatch.json()) == ["password_confirm"]

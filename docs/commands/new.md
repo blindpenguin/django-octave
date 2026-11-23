@@ -31,7 +31,7 @@ uv run django-octave new myapi \
 
 | Option | Default / notes |
 |--------|-----------------|
-| `NAME` | Project directory name (prompted if omitted) |
+| `NAME` | Project name (prompted if omitted): 1-64 letters, digits, spaces, `.`, `-`, `_`, starting with a letter or digit. The directory is its ASCII slug (`My Shop` → `my_shop`); a name without any ASCII letter or digit cannot produce one. See [Security](../concepts/security.md#project-names) |
 | `--database` / `-d` | `sqlite`, `postgres`, or `mariadb` |
 | `--docker` / `--no-docker` | Include Docker artifacts |
 | `--multitenancy` / `--no-multitenancy` | Row-level tenancy (create-time only) |

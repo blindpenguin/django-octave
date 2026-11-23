@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import ast
+import json
 import re
+import tomllib
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
 from django_octave.cli import app
@@ -149,3 +153,71 @@ def test_new_target_that_is_a_file_exits_1_without_traceback(tmp_path: Path) -> 
     assert result.exit_code == 1
     assert "not a directory" in _flat(result.output)
     assert "Traceback" not in result.output
+
+
+PAYLOAD = 'My" + __import__("os").getcwd() + "App'
+
+
+def test_new_refuses_a_project_name_that_would_become_code(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["new", PAYLOAD, *_new_args(tmp_path)[2:]])
+
+    assert result.exit_code == 2
+    assert "Invalid project name" in _flat(result.output)
+    assert list(tmp_path.iterdir()) == []  # nothing was written
+
+
+@pytest.mark.parametrize("name", ["My App", "Café Münster 2.0", "2fast", "a.b-c_d"])
+def test_new_accepts_awkward_names_and_every_generated_file_parses(
+    tmp_path: Path, name: str
+) -> None:
+    args = [
+        "new", name, "-d", "sqlite", "--no-docker", "--no-multitenancy",
+        "--frontend", "--register", "--no-crud", "--path", str(tmp_path),
+    ]  # fmt: skip
+
+    result = runner.invoke(app, args)
+
+    assert result.exit_code == 0, result.output
+    root = next(p for p in tmp_path.iterdir() if p.is_dir())
+    for path in root.rglob("*.py"):
+        ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    package = json.loads((root / "frontend" / "package.json").read_text(encoding="utf-8"))
+    assert package["name"].endswith("-frontend")
+    settings = (root / "config" / "settings" / "base.py").read_text(encoding="utf-8")
+    assert f'"TITLE": "{name} API"' in settings  # the name is data, not code
+
+
+def test_new_name_without_any_ascii_letter_fails_cleanly_on_the_directory_slug(
+    tmp_path: Path,
+) -> None:
+    # The name itself is allowed (Unicode), but the directory/package slug is ASCII.
+    result = runner.invoke(app, ["new", "日本語プロジェクト", *_new_args(tmp_path)[2:]])
+
+    assert result.exit_code == 1
+    assert "Cannot derive a valid project slug" in _flat(result.output)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_new_project_context_refuses_an_unsafe_name_even_without_the_cli(
+    tmp_path: Path,
+) -> None:
+    from django_octave.options import DatabaseChoice
+    from django_octave.prompts.new_project import NewProjectOptions
+    from django_octave.rendering.context import ProjectContext
+    from django_octave.safe_names import InvalidProjectNameError
+
+    options = NewProjectOptions(
+        name=PAYLOAD,
+        path=tmp_path,
+        database=DatabaseChoice.SQLITE,
+        docker=False,
+        multitenancy=False,
+        frontend=False,
+        register=False,
+        crud=False,
+        force=False,
+    )
+
+    with pytest.raises(InvalidProjectNameError):
+        ProjectContext.from_options(options)

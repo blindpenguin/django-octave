@@ -18,6 +18,12 @@ OCTAVE_E2E_DOCKER=1 uv run pytest tests/e2e/test_docker_image.py   # builds real
 
 The Docker suite builds the production image for SQLite, Postgres and MariaDB and removes every image and container it creates. It skips itself when Docker is not available.
 
+## Continuous integration
+
+Pull requests run `ruff check src tests`, `pytest` and `mkdocs build --strict` (workflow `CI`). Pushes to `master` also run both end-to-end suites. A release tag runs the same workflow first, and the release job only starts when it passes.
+
+All third-party actions are pinned to a commit SHA with the version in a trailing comment; Dependabot proposes updates. `tests/test_workflows.py` enforces the pinning, least-privilege permissions and the release gate. `ruff format --check` is not part of CI yet.
+
 ## Documentation
 
 User docs live under `docs/` and are built with MkDocs Material:

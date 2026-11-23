@@ -255,3 +255,25 @@ def test_patch_django_for_frontend_adds_proxy_count_to_env_example(tmp_path: Pat
     env = (root / ".env.example").read_text(encoding="utf-8")
     assert env.count("DJANGO_NUM_PROXIES=1") == 1
     assert "CORS_ALLOWED_ORIGINS=" in env
+
+
+@pytest.mark.parametrize("multitenancy", [False, True])
+def test_render_auth_api_registration_validates_the_password_against_the_user(
+    multitenancy: bool,
+) -> None:
+    source = render_auth_api(use_multitenancy=multitenancy)
+
+    ast.parse(source)
+    assert 'validate_password(attrs["password"], user=User(email=attrs["email"]))' in source
+    assert "except DjangoValidationError as exc:" in source
+    assert '{"password": list(exc.messages)}' in source
+    # the helper user is only a data holder for the validators; it is never saved
+    assert "User(email=attrs" in source
+    assert "User(email=attrs[\"email\"]).save" not in source
+
+
+def test_render_auth_api_keeps_the_other_registration_error_shapes() -> None:
+    source = render_auth_api(use_multitenancy=False)
+
+    assert '{"password_confirm": "Passwords do not match."}' in source
+    assert '"A user with this email already exists."' in source

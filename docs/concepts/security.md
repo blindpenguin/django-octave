@@ -12,6 +12,7 @@ Production settings (`config.settings.prod`) refuse to start when these are wron
 | `DJANGO_ALLOWED_HOSTS` | Set, comma separated, and never `*`. `.env.example` ships `localhost,127.0.0.1` for local use only. |
 | `DATABASE_URL` | Your production database. |
 | `DJANGO_NUM_PROXIES` | Number of reverse proxies in front of Django (default `0`). See [Rate limits](#rate-limits). |
+| `CORS_ALLOWED_ORIGINS` | `.env.example` lists `localhost` origins for development. Replace them with your real front-end origins. |
 
 `python manage.py check --deploy` is clean apart from `security.W021` (HSTS preload). The generated settings use a 30 day HSTS period, which does not qualify for the preload list, on purpose.
 
@@ -33,6 +34,18 @@ Clients are identified by address. **Behind a reverse proxy, set `DJANGO_NUM_PRO
 
 !!! note "Accepted risk: account enumeration"
     Registration answers "A user with this email already exists." The SPA needs that message to show a useful error. The `auth` limit bounds how fast addresses can be probed, but it does not remove the exposure. If that matters for your product, return a generic response and confirm by email.
+
+## Accounts and sessions
+
+- **Registration** checks the password against the project's `AUTH_PASSWORD_VALIDATORS` *and* the new account's own email, so `alice@example.com` cannot register with `alice@example`. Rejections come back as `400` with the messages under `password`.
+- **Django admin login is not rate limited.** Restrict `/admin/` at the network level (VPN, IP allow-list, a different path behind your proxy) or add a package such as `django-axes`.
+- **Refresh tokens cannot be revoked.** They stay valid until they expire (SimpleJWT default: 1 day) even after a password change or logout. Shorten `REFRESH_TOKEN_LIFETIME` if that matters to you, or enable `rest_framework_simplejwt.token_blacklist` (it adds a migration and a table).
+
+## Project names
+
+`django-octave new` accepts project names of 1-64 characters: letters and digits (Unicode is fine), spaces, `.`, `-` and `_`, starting with a letter or digit. Anything else (quotes, brackets, backslashes, `$`, newlines, ...) is refused, because the name is copied into Python, TOML, JSON, HTML and Vue files.
+
+`add-frontend` reads the title from the first `# ` heading of `README.md`. If that heading is not a valid name by the same rule (for example `# Bob's "Shop"`), the SPA uses the project slug as its title instead; nothing fails. The same applies to a `name` in `pyproject.toml` that is not a plain package-style identifier.
 
 ## Multitenancy
 

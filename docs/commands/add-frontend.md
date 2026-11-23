@@ -39,6 +39,8 @@ Interactive runs prompt for frontend (on `new`), then registration and CRUD when
 
 - Login, token refresh and registration are rate limited (default 10/min per client). `.env.example` gets `DJANGO_NUM_PROXIES=1`, because the SPA's nginx is a reverse proxy; see [Security](../concepts/security.md#rate-limits).
 - `GET /api/users/` is tenant-scoped in multitenancy projects (see [Multitenancy](../concepts/multitenancy.md#the-user-list)).
+- The SPA title comes from the README's first `# ` heading when it is a valid project name, otherwise from the project slug; see [Security](../concepts/security.md#project-names).
+- Registration also rejects passwords that are too similar to the email.
 - Tokens live in `localStorage`; the SPA's nginx sends basic security headers. Details in [Security](../concepts/security.md#the-generated-spa).
 
 ## What it writes

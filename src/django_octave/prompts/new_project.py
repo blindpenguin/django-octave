@@ -11,6 +11,7 @@ from rich.console import Console
 from rich.prompt import Confirm, Prompt
 
 from django_octave.options import DatabaseChoice
+from django_octave.safe_names import InvalidProjectNameError, validate_project_name
 
 console = Console(stderr=True)
 
@@ -53,6 +54,12 @@ def resolve_new_project_options(
                 raise typer.BadParameter("Project name must not be empty.")
         else:
             missing.append("name (argument)")
+
+    if name is not None:
+        try:
+            name = validate_project_name(name)
+        except InvalidProjectNameError as exc:
+            raise typer.BadParameter(str(exc)) from exc
 
     if database is None:
         if interactive:

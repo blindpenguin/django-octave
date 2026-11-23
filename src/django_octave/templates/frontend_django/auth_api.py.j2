@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers, status
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -80,7 +81,11 @@ class RegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {"password_confirm": "Passwords do not match."}
             )
-        validate_password(attrs["password"])
+        try:
+            # The unsaved user lets the similarity validator compare against the email.
+            validate_password(attrs["password"], user=User(email=attrs["email"]))
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError({"password": list(exc.messages)}) from exc
         return attrs
 
     def create(self, validated_data: dict) -> object:

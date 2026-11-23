@@ -15,6 +15,7 @@ from django_octave.frontend_gen.detect import (
     project_slug,
 )
 from django_octave.frontend_gen.django_patch import patch_django_for_frontend
+from django_octave.safe_names import RULE, is_safe_project_name, is_safe_slug
 
 FRONTEND_TEMPLATES_ROOT = (
     Path(__file__).resolve().parent.parent / "templates" / "frontend"
@@ -78,6 +79,10 @@ def render_frontend(
         raise FrontendSetupError("project_name must not be empty")
     if not project_slug.strip():
         raise FrontendSetupError("project_slug must not be empty")
+    if not is_safe_project_name(project_name):
+        raise FrontendSetupError(f"Unsafe project_name {project_name!r}: {RULE}")
+    if not is_safe_slug(project_slug):
+        raise FrontendSetupError(f"Unsafe project_slug {project_slug!r}")
 
     env = create_frontend_environment()
     mapping: dict[str, object] = {

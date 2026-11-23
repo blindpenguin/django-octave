@@ -117,8 +117,8 @@ def new_project(
         crud=crud,
         force=force,
     )
-    ctx = ProjectContext.from_options(options)
     try:
+        ctx = ProjectContext.from_options(options)
         report = render_project_report(ctx)
     except (TargetExistsError, NotADirectoryError, ValueError) as exc:
         err_console.print(f"[red]{exc}[/red]")

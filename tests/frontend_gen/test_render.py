@@ -135,3 +135,24 @@ def test_render_nginx_keeps_proxy_and_spa_fallback(tmp_path: Path) -> None:
     assert "proxy_pass http://web:8000;" in conf
     assert "proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;" in conf
     assert "try_files $uri $uri/ /index.html;" in conf
+
+
+@pytest.mark.parametrize(
+    ("name", "slug"),
+    [
+        ('Demo"', "demo"),
+        ("Demo {{ x }}", "demo"),
+        ("Demo", 'de"mo'),
+        ("Demo", "../demo"),
+        ("Demo", "demo\nx"),
+    ],
+)
+def test_render_frontend_refuses_unsafe_name_or_slug(
+    tmp_path: Path, name: str, slug: str
+) -> None:
+    target = tmp_path / "frontend"
+
+    with pytest.raises(FrontendSetupError, match="Unsafe project_"):
+        render_frontend(target, project_name=name, project_slug=slug, include_register=False)
+
+    assert not target.exists()

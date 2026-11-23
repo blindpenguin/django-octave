@@ -24,6 +24,9 @@ site/
 !.env.example
 !src/django_octave/templates/**/.env.example.j2
 
+# Local Claude Code settings (machine-specific)
+.claude/settings.local.json
+
 # Spec Workflow MCP runtime (keep specs/steering/templates in git)
 .spec-workflow/approvals/
 .spec-workflow/archive/
