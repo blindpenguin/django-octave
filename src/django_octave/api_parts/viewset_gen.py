@@ -5,6 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from django_octave.api_parts.ownership_gen import (
+    apply_owner_scoping,
+    ensure_ownership_module,
+    owner_attr_of_permission,
+)
 from django_octave.api_parts.serializer_gen import SerializerOptions, write_serializer
 from django_octave.inspect.model_fields import (
     ModelFieldInfo,
@@ -247,16 +252,26 @@ def write_viewset(
     *,
     options: ViewSetOptions,
     info: ModelFieldInfo | None = None,
+    notes: list[str] | None = None,
 ) -> tuple[Path, Path]:
     """Upsert viewset and ensure router registration.
 
-    Returns ``(views.py path, urls.py path)``.
+    Returns ``(views.py path, urls.py path)``. When the permission is a generated owner
+    permission (it declares ``owner_attr``) the viewset is also made owner-scoped and
+    ``notes`` (if given) receives a line per change.
     """
     if options.tag is not None:
         validate_tag(options.tag)  # before anything is written
     perm_module, permission = resolve_permission(
         app_dir, options.app_name, options.permission
     )
+    owner_attr = (
+        owner_attr_of_permission(app_dir / "permissions.py", permission)
+        if perm_module == f"apps.{options.app_name}.permissions"
+        else None
+    )
+    if owner_attr is not None:
+        ensure_ownership_module(app_dir.parent)  # fail before anything is written
     models_path = app_dir / "models.py"
     if info is None:
         info = inspect_model_fields_path(models_path, options.model_name)
@@ -353,5 +368,12 @@ def write_viewset(
         )
     else:
         ensure_router_registration(urls_path, options.app_name, options.model_name)
+
+    if owner_attr is not None:
+        scoping_notes = apply_owner_scoping(
+            app_dir, viewset_class=class_name, owner_attr=owner_attr
+        )
+        if notes is not None:
+            notes.extend(scoping_notes)
 
     return views_path, urls_path

@@ -116,6 +116,7 @@ def add_viewset_cmd(
                 f"Model {model} not found in apps.{app}.models. "
                 f"Run: django-octave add-model {app} {model}"
             )
+        scoping_notes: list[str] = []
         with rollback_on_error(project.root):
             views_path, urls_path = write_viewset(
                 app_dir,
@@ -130,6 +131,7 @@ def add_viewset_cmd(
                     force=options.force,
                     use_multitenancy=project.use_multitenancy,
                 ),
+                notes=scoping_notes,
             )
     except (
         NotOctaveProjectError,
@@ -156,6 +158,7 @@ def add_viewset_cmd(
                     f"- Updated `{views_path.relative_to(project.root)}`",
                     f"- Router: `{urls_path.relative_to(project.root)}`",
                     f"- Permission: `{options.permission}`",
+                    *[f"- {note}" for note in scoping_notes],
                     "",
                     "## Next steps",
                     "",

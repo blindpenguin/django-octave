@@ -82,7 +82,7 @@ Writes without a resolved tenant fail closed; reads return empty querysets.
 
 ## Access
 
-By default every authenticated user can read and change **every record** of the generated models{% if use_multitenancy %} (within their tenant){% endif %}, and the API docs are admin-only in production. Add ownership or role rules before exposing real data: see "Who can access what" in the django-octave docs (Concepts → Security). Note that the `owner` permission preset protects single objects, not list endpoints.
+By default every authenticated user can read and change **every record** of the generated models{% if use_multitenancy %} (within their tenant){% endif %}, and the API docs are admin-only in production. Add ownership or role rules before exposing real data: see "Who can access what" in the django-octave docs (Concepts → Security). For per-owner access use `django-octave add-permission <app> IsOwner --preset owner --viewset <Model>`: it limits the whole resource to the user's own rows and sets the owner on the server.
 
 Run `uv lock` and `uv audit` to pin and check dependencies.
 

@@ -47,3 +47,6 @@ class ResourceSpec:
     fields: tuple[CrudField, ...] = field(default_factory=tuple)
     skip_reason: str | None = None
     """If set, resource was found but should be soft-skipped for generation."""
+
+    owner_field: str | None = None
+    """Owner attribute of an owner-scoped viewset (``owner_field = "..."``); read-only in the SPA."""

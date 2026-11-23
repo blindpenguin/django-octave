@@ -1,0 +1,33 @@
+"""Scope a viewset to the rows its user owns.
+
+Use it together with an owner permission (``add-permission ... --preset owner``)::
+
+    class NoteViewSet(OwnerScopedMixin, viewsets.ModelViewSet):
+        owner_field = "owner"
+        queryset = Note.objects.all()
+
+The mixin goes **first** in the bases. It calls ``super().get_queryset()`` and filters
+the result, so it composes with ``TenantScopedMixin`` (tenant first, then owner).
+The owner is set on the server: a client cannot create rows for someone else or
+hand a row over, whatever the payload says.
+"""
+
+from __future__ import annotations
+
+
+class OwnerScopedMixin:
+    owner_field = "owner"
+
+    def get_queryset(self):  # type: ignore[no-untyped-def]
+        queryset = super().get_queryset()  # type: ignore[misc]
+        user = self.request.user  # type: ignore[attr-defined]
+        if not user.is_authenticated:
+            return queryset.none()
+        return queryset.filter(**{self.owner_field: user})
+
+    def perform_create(self, serializer):  # type: ignore[no-untyped-def]
+        serializer.save(**{self.owner_field: self.request.user})  # type: ignore[attr-defined]
+
+    def perform_update(self, serializer):  # type: ignore[no-untyped-def]
+        # Keeps the owner even for serializers that still expose it as writable.
+        serializer.save(**{self.owner_field: self.request.user})  # type: ignore[attr-defined]

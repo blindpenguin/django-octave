@@ -398,3 +398,217 @@ def ensure_router_registration(path: Path, app_name: str, model_name: str) -> No
         else:
             source = source[:idx] + register + "\n\n" + source[idx:]
     path.write_text(source, encoding="utf-8")
+
+
+# --- class-level edits used by owner scoping ----------------------------------------
+
+
+def _parse_for_edit(path: Path) -> cst.Module:
+    try:
+        return cst.parse_module(path.read_text(encoding="utf-8"))
+    except cst.ParserSyntaxError as exc:
+        raise ModelWriteError(f"Could not parse {path}: {exc}") from exc
+
+
+def ensure_class_base(
+    path: Path, class_name: str, base: str, *, first: bool = True
+) -> bool:
+    """Make ``base`` (a plain name) one of ``class_name``'s bases. Returns True if changed."""
+    module = _parse_for_edit(path)
+    changed = False
+
+    class _Edit(cst.CSTTransformer):
+        def leave_ClassDef(
+            self, original_node: cst.ClassDef, updated_node: cst.ClassDef
+        ) -> cst.ClassDef:
+            nonlocal changed
+            if original_node.name.value != class_name:
+                return updated_node
+            if any(
+                isinstance(arg.value, cst.Name) and arg.value.value == base
+                for arg in updated_node.bases
+            ):
+                return updated_node
+            new = cst.Arg(value=cst.Name(base))
+            bases = [new, *updated_node.bases] if first else [*updated_node.bases, new]
+            changed = True
+            return updated_node.with_changes(bases=bases)
+
+    updated = module.visit(_Edit())
+    if changed:
+        path.write_text(updated.code, encoding="utf-8")
+    return changed
+
+
+def _assigned_name(statement: cst.BaseStatement) -> str | None:
+    """Name assigned by a single ``name = value`` statement, else None."""
+    if not isinstance(statement, cst.SimpleStatementLine) or len(statement.body) != 1:
+        return None
+    small = statement.body[0]
+    if isinstance(small, cst.Assign) and len(small.targets) == 1:
+        target = small.targets[0].target
+        if isinstance(target, cst.Name):
+            return target.value
+    return None
+
+
+def set_class_attribute(
+    path: Path, class_name: str, attr: str, value_source: str
+) -> bool:
+    """Set ``attr = value_source`` in ``class_name``'s body. Returns True if changed.
+
+    Replaces an existing simple assignment; otherwise inserts the statement before
+    ``queryset = ...`` (or at the top, after a docstring).
+    """
+    module = _parse_for_edit(path)
+    try:
+        value = cst.parse_expression(value_source)
+    except cst.ParserSyntaxError as exc:
+        raise ModelWriteError(f"Invalid value {value_source!r} for {attr}: {exc}") from exc
+    changed = False
+
+    class _Edit(cst.CSTTransformer):
+        def leave_ClassDef(
+            self, original_node: cst.ClassDef, updated_node: cst.ClassDef
+        ) -> cst.ClassDef:
+            nonlocal changed
+            if original_node.name.value != class_name:
+                return updated_node
+            body = list(updated_node.body.body)
+            for i, statement in enumerate(body):
+                if _assigned_name(statement) == attr:
+                    assign = statement.body[0]  # type: ignore[union-attr]
+                    if cst.Module([]).code_for_node(assign.value) == cst.Module([]).code_for_node(value):
+                        return updated_node
+                    body[i] = statement.with_changes(  # type: ignore[union-attr]
+                        body=[assign.with_changes(value=value)]
+                    )
+                    changed = True
+                    return updated_node.with_changes(
+                        body=updated_node.body.with_changes(body=body)
+                    )
+            new_statement = cst.parse_statement(f"{attr} = {value_source}")
+            at = next(
+                (i for i, s in enumerate(body) if _assigned_name(s) == "queryset"), None
+            )
+            if at is None:
+                at = 0
+                if body and isinstance(body[0], cst.SimpleStatementLine):
+                    first = body[0].body[0] if body[0].body else None
+                    if isinstance(first, cst.Expr) and isinstance(
+                        first.value, cst.SimpleString | cst.ConcatenatedString
+                    ):
+                        at = 1
+            body.insert(at, new_statement)
+            changed = True
+            return updated_node.with_changes(body=updated_node.body.with_changes(body=body))
+
+    updated = module.visit(_Edit())
+    if changed:
+        path.write_text(updated.code, encoding="utf-8")
+    return changed
+
+
+def _string_items(node: cst.BaseExpression) -> list[str] | None:
+    """Evaluated strings of a tuple/list of string literals, else None."""
+    if not isinstance(node, cst.Tuple | cst.List):
+        return None
+    out = []
+    for element in node.elements:
+        value = element.value
+        if not isinstance(value, cst.SimpleString):
+            return None
+        out.append(str(value.evaluated_value))
+    return out
+
+
+def ensure_read_only_field(path: Path, class_name: str, field: str) -> str:
+    """Put ``field`` into ``<class_name>.Meta.read_only_fields``.
+
+    Returns ``"added"``, ``"present"`` (already read-only) or ``"not-a-field"`` (the
+    serializer's explicit ``fields`` does not include it, so nothing is changed).
+    """
+    module = _parse_for_edit(path)
+    result = "not-a-field"
+    found_class = False
+
+    class _Edit(cst.CSTTransformer):
+        def leave_ClassDef(
+            self, original_node: cst.ClassDef, updated_node: cst.ClassDef
+        ) -> cst.ClassDef:
+            nonlocal result, found_class
+            if original_node.name.value != class_name:
+                return updated_node
+            found_class = True
+            body = list(updated_node.body.body)
+            meta_index = next(
+                (
+                    i
+                    for i, s in enumerate(body)
+                    if isinstance(s, cst.ClassDef) and s.name.value == "Meta"
+                ),
+                None,
+            )
+            if meta_index is None:
+                result = "not-a-field"
+                return updated_node
+            meta = body[meta_index]
+            assert isinstance(meta, cst.ClassDef)
+            meta_body = list(meta.body.body)
+
+            fields_node = next(
+                (
+                    s.body[0].value  # type: ignore[union-attr]
+                    for s in meta_body
+                    if _assigned_name(s) == "fields"
+                ),
+                None,
+            )
+            if fields_node is not None:
+                explicit = _string_items(fields_node)
+                if explicit is not None and field not in explicit:
+                    result = "not-a-field"
+                    return updated_node
+
+            for i, statement in enumerate(meta_body):
+                if _assigned_name(statement) != "read_only_fields":
+                    continue
+                assign = statement.body[0]  # type: ignore[union-attr]
+                current = _string_items(assign.value)
+                if current is None:
+                    raise ModelWriteError(
+                        f"{class_name}.Meta.read_only_fields in {path} is not a plain "
+                        f"tuple/list of strings; add {field!r} to it by hand"
+                    )
+                if field in current:
+                    result = "present"
+                    return updated_node
+                container = assign.value
+                assert isinstance(container, cst.Tuple | cst.List)
+                elements = [*container.elements, cst.Element(value=cst.SimpleString(f'"{field}"'))]
+                meta_body[i] = statement.with_changes(
+                    body=[assign.with_changes(value=container.with_changes(elements=elements))]
+                )
+                break
+            else:
+                statement = cst.parse_statement(f'read_only_fields = ("{field}",)')
+                at = next(
+                    (
+                        i + 1
+                        for i, s in enumerate(meta_body)
+                        if _assigned_name(s) == "fields"
+                    ),
+                    len(meta_body),
+                )
+                meta_body.insert(at, statement)
+
+            result = "added"
+            body[meta_index] = meta.with_changes(body=meta.body.with_changes(body=meta_body))
+            return updated_node.with_changes(body=updated_node.body.with_changes(body=body))
+
+    updated = module.visit(_Edit())
+    if not found_class:
+        raise ModelWriteError(f"{class_name} not found in {path}")
+    if result == "added":
+        path.write_text(updated.code, encoding="utf-8")
+    return result

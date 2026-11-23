@@ -32,7 +32,7 @@ def test_validate_preset() -> None:
 @pytest.mark.parametrize(
     ("preset", "needle"),
     [
-        ("owner", 'getattr(obj, "owner"'),
+        ("owner", 'owner_attr = "owner"'),
         ("staff_or_read", "SAFE_METHODS"),
         ("auth_or_read", "is_authenticated"),
         ("tenant_member", 'getattr(request, "tenant"'),
@@ -46,7 +46,8 @@ def test_build_permission_class(preset: str, needle: str) -> None:
 
 def test_build_owner_custom_attr() -> None:
     src = build_permission_class("IsAuthor", preset="owner", owner_attr="author")
-    assert 'getattr(obj, "author"' in src
+    assert 'owner_attr = "author"' in src
+    assert "getattr(obj, self.owner_attr, None)" in src
 
 
 def test_write_permission_create_and_force(tmp_path: Path) -> None:

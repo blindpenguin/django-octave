@@ -28,6 +28,10 @@ uv run django-octave new myapi -d sqlite --no-docker --no-multitenancy \
 - `ModelViewSet` for `APP.MODEL` with `router.register` in `apps/<app>/urls.py`
 - Model fields inspectable via libcst (no Django runtime at generate time)
 
+## Owner-scoped viewsets
+
+When the viewset uses `OwnerScopedMixin` (see [Per-owner access](../concepts/security.md#per-owner-access)), its `owner_field` is shown read-only in the detail page and is not part of the create and edit forms: the server sets the owner. Other foreign keys to the user stay editable.
+
 ## Flags
 
 | Option | Notes |

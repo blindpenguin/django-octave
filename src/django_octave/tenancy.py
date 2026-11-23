@@ -19,9 +19,20 @@ def is_tenant_scoped(*, use_multitenancy: bool, tenant_aware: bool) -> bool:
     return use_multitenancy and tenant_aware
 
 
-def viewset_bases(*, scoped: bool) -> str:
-    """Base-class list for a generated ``ModelViewSet``."""
-    return "TenantScopedMixin, viewsets.ModelViewSet" if scoped else "viewsets.ModelViewSet"
+def viewset_bases(*, scoped: bool, owned: bool = False) -> str:
+    """Base-class list for a generated ``ModelViewSet``.
+
+    Order matters: ``OwnerScopedMixin`` calls ``super().get_queryset()`` and filters, while
+    ``TenantScopedMixin.get_queryset`` does not call ``super()``, so the owner mixin goes
+    first and the tenant mixin second.
+    """
+    parts = []
+    if owned:
+        parts.append("OwnerScopedMixin")
+    if scoped:
+        parts.append("TenantScopedMixin")
+    parts.append("viewsets.ModelViewSet")
+    return ", ".join(parts)
 
 
 def ensure_tenancy_module(apps_dir: Path) -> None:

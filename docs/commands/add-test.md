@@ -21,6 +21,7 @@ cd /path/to/project && uv run pytest
   - Auth-required viewsets: anonymous list expects 401/403
   - `AllowAny` viewsets: anonymous list expects 200
   - Owner-style User FKs (`author` / `assignee` / …): authenticated smoke tests pass `field=user`
+- Owner-scoped viewsets (`OwnerScopedMixin`): four extra tests: only own rows are listed, another user's row is `404`, the owner in the payload is ignored on create, and an update cannot change the owner (see [Per-owner access](../concepts/security.md#per-owner-access))
 - Without a viewset: model smoke test instead
 - Tenant-aware models on multitenancy projects: tests use `tenant` / `tenant_client` fixtures (added to `tests/conftest.py`) and a `TenantFactory`, and check the `X-Tenant-ID` requirement and cross-tenant isolation — see [Multitenancy](../concepts/multitenancy.md)
 

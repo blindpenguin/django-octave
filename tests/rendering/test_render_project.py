@@ -366,6 +366,7 @@ def test_render_readme_states_the_default_access_model(tmp_path: Path, multitena
 
     assert "## Access" in readme
     assert "every authenticated user can read and change **every record**" in readme
-    assert "protects single objects, not list endpoints" in readme
+    assert "--preset owner --viewset" in readme
+    assert "sets the owner on the server" in readme
     assert "uv audit" in readme
     assert ("(within their tenant)" in readme) is multitenancy

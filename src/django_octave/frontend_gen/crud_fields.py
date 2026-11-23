@@ -150,6 +150,7 @@ def build_crud_fields(
     *,
     default_app: str,
     fk_label_overrides: dict[str, str] | None = None,
+    owner_field: str | None = None,
 ) -> tuple[tuple[CrudField, ...], list[str]]:
     """Build CrudField tuple and warning messages (e.g. M2M omit, FK fallback)."""
     warnings: list[str] = []
@@ -163,6 +164,10 @@ def build_crud_fields(
         fields.append(CrudField(name="updated_at", kind="readonly", required=False))
 
     for name, ftype in info.fields.items():
+        if name == owner_field:
+            # The server owns it (OwnerScopedMixin): shown in the detail view, never edited.
+            fields.append(CrudField(name=name, kind="readonly", required=False))
+            continue
         if ftype == "ManyToManyField":
             warnings.append(f"omitting M2M field {name!r} in v1 CRUD forms")
             continue
@@ -244,6 +249,7 @@ def enrich_resource(
                 api_collection=spec.api_collection,
                 viewset_name=spec.viewset_name,
                 skip_reason=spec.skip_reason or str(exc),
+                owner_field=spec.owner_field,
             ),
             [str(exc)],
         )
@@ -253,6 +259,7 @@ def enrich_resource(
         info,
         default_app=spec.app_name,
         fk_label_overrides=fk_label_overrides,
+        owner_field=spec.owner_field,
     )
     label, label_warnings = resolve_label_field(
         project_root,
@@ -271,5 +278,6 @@ def enrich_resource(
         label_field=label,
         fields=crud_fields,
         skip_reason=spec.skip_reason,
+        owner_field=spec.owner_field,
     )
     return enriched, warnings

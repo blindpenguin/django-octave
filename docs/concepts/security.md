@@ -64,28 +64,33 @@ These are the defaults of a generated project (checked against a real one):
 | Staff-only writes, everyone reads | `add-permission <app> IsStaffOrRead --preset staff_or_read --viewset <Model>` |
 | Admin-only endpoint | `add-viewset <app> <Model> --permission IsAdminUser --force` |
 | A different rule for one action | `add-action ... --permission <Permission>` |
-| Per-owner access | the `owner` preset, **plus the two steps below** |
+| **Per-owner access** | `add-permission <app> IsOwner --preset owner --owner-attr owner --viewset <Model>` (see below) |
 
-!!! warning "The `owner` preset protects single objects, not the list"
-    `add-permission --preset owner` checks the owner of an object when it is **read, changed or deleted** (anyone else gets `403`). It does **not** filter the list endpoint: `GET /api/<models>/` still returns every user's rows. Filter the queryset yourself:
+### Per-owner access
 
-    ```python
-    class NoteViewSet(viewsets.ModelViewSet):
-        def get_queryset(self):
-            return super().get_queryset().filter(owner=self.request.user)
-    ```
+Choose the `owner` preset and wire it to a viewset (`--viewset <Model>`, or later `add-viewset <app> <Model> --permission IsOwner --force`). The generator then makes the **whole resource** owner-scoped:
 
-!!! warning "A generated owner field is writable"
-    The serializer for a model with an `owner` (or `author`, ...) foreign key to the user exposes that field as writable, so a client can create a row **owned by someone else**. Make it read-only and set it on the server:
+- **Every endpoint sees only the caller's rows.** List, retrieve, update, delete and custom actions are limited to rows whose owner is the requesting user. Someone else's row returns `404`; the object permission stays in place as a second layer. Anonymous requests get nothing.
+- **The server decides who owns a row.** Creating a row sets the owner to the requester whatever the payload says, and the owner cannot be changed by an update. The field is read-only in the serializer, `readOnly` in the OpenAPI schema, and read-only in the generated SPA forms.
+- **It composes with multitenancy:** a request sees only rows of the current tenant that it also owns.
+- **`add-test` generates tests** that fail if any of this is lost (own rows only, 404 for others, owner ignored on create, owner unchanged on update).
 
-    ```python
-    class Meta:
-        read_only_fields = ("id", "owner", "created_at", "updated_at")
+This works through `OwnerScopedMixin` (`apps/core/ownership.py`, generated into every project) and two contract attributes: the generated permission class declares `owner_attr = "owner"`, the viewset declares `owner_field = "owner"`. Nothing is guessed from field names.
 
-    class NoteViewSet(viewsets.ModelViewSet):
-        def perform_create(self, serializer):
-            serializer.save(owner=self.request.user)
-    ```
+What it does **not** do:
+
+- **Other foreign keys to the user stay writable** (`assignee`, `reviewer`, ...): only the attribute you named with `--owner-attr` is protected.
+- **Staff and superusers are scoped like everyone else.** Add a bypass in `get_queryset` if you want one.
+- **Viewsets that do not use it stay open**, as described above.
+- **A permission class without `owner_attr`** (hand-written, or generated before this existed) is not touched and not guessed at. To opt in by hand, add `OwnerScopedMixin` as the first base class, set `owner_field`, and put the owner in the serializer's `read_only_fields`.
+
+### Upgrading an existing project
+
+Projects generated before owner scoping existed have the owner permission class but not the scoping. To upgrade one:
+
+1. Copy `apps/core/ownership.py` from a freshly generated project into `apps/core/`. (Until then `add-permission --viewset` and `add-viewset` refuse, and say so.)
+2. Re-run the wiring for each owner-scoped model: `django-octave add-permission <app> IsOwner --preset owner --owner-attr owner --viewset <Model> --force`. This regenerates the permission class with `owner_attr`, adds the mixin and `owner_field` to the viewset, and makes the owner read-only in the serializer. (`--force` also replaces the permission class, so move any edits of your own first.)
+3. `django-octave add-test <app> <Model> --force` for the isolation tests, and `django-octave add-frontend-crud --force` if you use the generated SPA pages.
 
 ## Dependencies
 

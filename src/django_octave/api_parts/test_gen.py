@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from django_octave.api_parts.ownership_gen import viewset_owner_field
 from django_octave.formatting import format_written_python
 from django_octave.inspect.model_fields import (
     ModelFieldInfo,
@@ -226,14 +227,22 @@ def _owner_factory_kw(info: ModelFieldInfo) -> str:
     return ""
 
 
-def build_api_test_source(
+def _build_api_test_source(
     *,
     app_name: str,
     model_name: str,
     tenant_aware: bool = False,
     anonymous_list_ok: bool = False,
     owner_kw: str = "",
+    owner_field: str | None = None,
 ) -> str:
+    """API test module for one model's viewset.
+
+    With ``owner_field`` (an owner-scoped viewset) the smoke tests create rows owned by the
+    requester and four isolation tests are appended.
+    """
+    if owner_field:
+        owner_kw = f"{owner_field}=user"
     snake = pascal_to_snake(model_name)
     stem = factory_module_stem(app_name, model_name)
     factory_name = factory_class_name(model_name)
@@ -338,6 +347,118 @@ def test_retrieve_authenticated({auth_args}) -> None:
     obj = {factory_call}
     response = auth_client.get(reverse("{snake}-detail", kwargs={{"pk": obj.pk}}))
     assert response.status_code == status.HTTP_200_OK
+'''
+
+
+def build_api_test_source(
+    *,
+    app_name: str,
+    model_name: str,
+    tenant_aware: bool = False,
+    anonymous_list_ok: bool = False,
+    owner_kw: str = "",
+    owner_field: str | None = None,
+) -> str:
+    source = _build_api_test_source(
+        app_name=app_name,
+        model_name=model_name,
+        tenant_aware=tenant_aware,
+        anonymous_list_ok=anonymous_list_ok,
+        owner_kw=owner_kw,
+        owner_field=owner_field,
+    )
+    if not owner_field:
+        return source
+    stem = factory_module_stem(app_name, model_name)
+    factory_name = factory_class_name(model_name)
+    marker = f"from tests.factories.{stem} import {factory_name}\n"
+    assert marker in source
+    source = source.replace("import pytest\n", "import factory\nimport pytest\n", 1)
+    source = source.replace(
+        "from django.urls import reverse\n",
+        "from django.db.models import Model\nfrom django.urls import reverse\n",
+        1,
+    )
+    source = source.replace(
+        marker,
+        f"from apps.{app_name}.models import {model_name}\n"
+        + marker
+        + "from tests.factories.user import UserFactory\n",
+        1,
+    )
+    return source.rstrip("\n") + "\n" + _owner_tests_source(
+        model_name=model_name,
+        factory_name=factory_name,
+        owner_field=owner_field,
+        tenant_aware=tenant_aware,
+    )
+
+
+def _owner_tests_source(
+    *, model_name: str, factory_name: str, owner_field: str, tenant_aware: bool
+) -> str:
+    snake = pascal_to_snake(model_name)
+    if tenant_aware:
+        client, args, manager = "tenant_client", "tenant_client, tenant, user", "all_objects"
+        mine = f"{factory_name}(tenant=tenant, {owner_field}=user)"
+        theirs = f"{factory_name}(tenant=tenant, {owner_field}=UserFactory())"
+        other_args = "tenant_client, tenant"
+    else:
+        client, args, manager = "auth_client", "auth_client, user", "objects"
+        mine = f"{factory_name}({owner_field}=user)"
+        theirs = f"{factory_name}({owner_field}=UserFactory())"
+        other_args = "auth_client"
+    return f'''
+
+def _rows(data):  # type: ignore[no-untyped-def]
+    return data["results"] if isinstance(data, dict) else data
+
+
+def _create_payload() -> dict:
+    data = factory.build(dict, FACTORY_CLASS={factory_name})
+    for key in ("{owner_field}", "tenant"):
+        data.pop(key, None)
+    if any(isinstance(value, Model) for value in data.values()):
+        pytest.skip("needs a hand-written payload: the factory builds related objects")
+    return data
+
+
+@pytest.mark.django_db
+def test_list_only_returns_own_rows({args}) -> None:
+    own = {mine}
+    {theirs}
+    response = {client}.get(reverse("{snake}-list"))
+    assert response.status_code == status.HTTP_200_OK
+    assert [row["id"] for row in _rows(response.json())] == [own.pk]
+
+
+@pytest.mark.django_db
+def test_other_users_row_is_not_found({other_args}) -> None:
+    other = {theirs}
+    response = {client}.get(reverse("{snake}-detail", kwargs={{"pk": other.pk}}))
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_create_sets_the_owner_to_the_requester_and_ignores_the_payload({args}) -> None:
+    payload = {{**_create_payload(), "{owner_field}": UserFactory().pk}}
+    response = {client}.post(reverse("{snake}-list"), payload, format="json")
+    assert response.status_code == status.HTTP_201_CREATED, response.content
+    created = {model_name}.{manager}.get(pk=response.json()["id"])
+    assert created.{owner_field} == user
+
+
+@pytest.mark.django_db
+def test_update_cannot_change_the_owner({args}) -> None:
+    own = {mine}
+    response = {client}.patch(
+        reverse("{snake}-detail", kwargs={{"pk": own.pk}}),
+        {{"{owner_field}": UserFactory().pk}},
+        format="json",
+    )
+    assert response.status_code == status.HTTP_200_OK
+    own.refresh_from_db()
+    assert own.{owner_field} == user
 '''
 
 
@@ -525,6 +646,7 @@ def write_tests(
                 tenant_aware=tenant_aware,
                 anonymous_list_ok=anonymous_ok,
                 owner_kw=_owner_factory_kw(info),
+                owner_field=viewset_owner_field(views_src, f"{options.model_name}ViewSet"),
             ),
             encoding="utf-8",
         )

@@ -6,7 +6,7 @@ import os
 import secrets
 import shutil
 import subprocess
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -78,9 +78,17 @@ def env_file_without(project: Path, *keys: str) -> Iterator[None]:
 
 
 def build_project(
-    parent: Path, *, multitenancy: bool, apps: tuple[tuple[str, str], ...] = ()
+    parent: Path,
+    *,
+    multitenancy: bool,
+    apps: tuple[tuple[str, str], ...] = (),
+    configure: Callable[[Path], None] | None = None,
 ) -> Path:
-    """Generate a project with the SPA backend (register on), sync it, make migrations."""
+    """Generate a project with the SPA backend (register on), sync it, make migrations.
+
+    ``configure`` runs after the apps are added and before dependencies are synced,
+    so a test can reshape models and wiring before the first migration is made.
+    """
     cli(
         "new", "demo", "-d", "sqlite", "--no-docker",
         "--multitenancy" if multitenancy else "--no-multitenancy",
@@ -89,6 +97,8 @@ def build_project(
     root = parent / "demo"
     for app_name, model in apps:
         cli("add", app_name, "--model", model, "--path", str(root))
+    if configure is not None:
+        configure(root)
     shutil.copy(root / ".env.example", root / ".env")
     for step in (["uv", "sync"], ["uv", "run", "python", "manage.py", "makemigrations"]):
         done = run(step, root)

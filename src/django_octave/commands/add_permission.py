@@ -9,6 +9,7 @@ import typer
 from rich.console import Console
 from rich.markdown import Markdown
 
+from django_octave.api_parts.ownership_gen import apply_owner_scoping
 from django_octave.api_parts.permission_gen import (
     PRESETS,
     PermissionExistsError,
@@ -110,6 +111,7 @@ def add_permission_cmd(
             raise FileNotFoundError(
                 f"App apps.{app} not found. Run: django-octave add {app}"
             )
+        scoping_notes: list[str] = []
         with rollback_on_error(project.root):
             perm_path = write_permission(
                 app_dir,
@@ -134,6 +136,10 @@ def add_permission_cmd(
                     append=options.append,
                 )
                 wired = vs
+                if preset_name == "owner":
+                    scoping_notes = apply_owner_scoping(
+                        app_dir, viewset_class=vs, owner_attr=options.owner_attr
+                    )
                 if preset_name == "tenant_member" and not viewset_has_tenant_mixin(
                     app_dir / "views.py", vs
                 ):
@@ -163,15 +169,17 @@ def add_permission_cmd(
     ]
     if wired:
         lines.append(f"- Wired to `{wired}` (`append={options.append}`)")
-    lines.extend(
-        [
-            "",
-            "## Next steps",
-            "",
-            "```bash",
-            f"django-octave add-viewset {app} YourModel --permission {name} --force",
-            "```",
-            "",
-        ]
-    )
+    lines.extend(f"- {note}" for note in scoping_notes)
+    next_steps = [f"django-octave add-viewset {app} YourModel --permission {name} --force"]
+    lines.extend(["", "## Next steps", ""])
+    if preset_name == "owner" and not wired:
+        lines.extend(
+            [
+                "This class only checks single objects. To also limit list endpoints to the "
+                "owner's rows and set the owner on the server, wire it with `--viewset` or "
+                "create the viewset with this permission (both add `OwnerScopedMixin`):",
+                "",
+            ]
+        )
+    lines.extend(["```bash", *next_steps, "```", ""])
     console.print(Markdown("\n".join(lines)))

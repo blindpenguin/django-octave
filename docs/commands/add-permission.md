@@ -28,7 +28,7 @@ uv run django-octave add-viewset blog Post --permission IsOwner --force
 
 | Preset | Notes |
 |--------|--------|
-| `owner` | Object owner check (read/update/delete of one object; fails closed if the attribute is missing). **Does not filter list endpoints**; see [Who can access what](../concepts/security.md#who-can-access-what) |
+| `owner` | Object owner check (fails closed if the attribute is missing). With `--viewset` (or later `add-viewset --permission <Class>`) the whole resource becomes owner-scoped: own rows only, owner set by the server and read-only; see [Per-owner access](../concepts/security.md#per-owner-access) |
 | `staff_or_read` | Staff write / read for others |
 | `auth_or_read` | Authenticated write / read for others |
 | `tenant_member` | Multitenancy projects only |
@@ -38,7 +38,8 @@ uv run django-octave add-viewset blog Post --permission IsOwner --force
 | Option | Notes |
 |--------|--------|
 | `--preset` | Default: `owner` |
-| `--owner-attr` | Attribute for owner preset |
+| `--owner-attr` | Attribute for owner preset; the viewset then gets `owner_field` with the same name |
+| `--viewset` | Wire the permission onto the viewset; with the owner preset this also adds `OwnerScopedMixin` and makes the owner read-only in the serializer |
 | `--viewset` | Model or `ModelViewSet` name to wire |
 | `--append` | Append instead of replacing `permission_classes` |
 | `--force` | Replace an existing permission class |

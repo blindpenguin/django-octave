@@ -1,0 +1,172 @@
+"""Owner-scoped viewset scenarios. Copied into a generated project's tests/ and run there.
+
+The `Note` model has an `owner` and an `assignee` foreign key to the user; the viewset
+is wired with `add-permission ... --preset owner --viewset Note`.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+
+import pytest
+from django.core.cache import cache
+from rest_framework.test import APIClient
+
+from apps.notes.models import Note
+from apps.users.models import User
+
+PASSWORD = "pw-Secret-123"
+MULTITENANT = importlib.util.find_spec("apps.core.tenancy") is not None
+
+
+@pytest.fixture(autouse=True)
+def _reset_throttle_counters():
+    cache.clear()
+
+
+@pytest.fixture
+def world(db):
+    alice = User.objects.create_user("alice@example.com", PASSWORD)
+    bob = User.objects.create_user("bob@example.com", PASSWORD)
+    carol = User.objects.create_user("carol@example.com", PASSWORD)
+    tenants = {}
+    if MULTITENANT:
+        from apps.core.models import Membership, Tenant
+
+        tenants["a"] = Tenant.objects.create(name="A", slug="a")
+        tenants["b"] = Tenant.objects.create(name="B", slug="b")
+        Membership.objects.create(user=alice, tenant=tenants["a"])
+        Membership.objects.create(user=bob, tenant=tenants["a"])
+        Membership.objects.create(user=carol, tenant=tenants["b"])
+    return {"alice": alice, "bob": bob, "carol": carol, "tenants": tenants}
+
+
+def _client(user: User, tenant=None) -> APIClient:
+    client = APIClient()
+    client.force_authenticate(user=user)
+    if tenant is not None:
+        client.credentials(HTTP_X_TENANT_ID=str(tenant.id))
+    return client
+
+
+def _alice(world) -> APIClient:
+    return _client(world["alice"], world["tenants"].get("a"))
+
+
+def _note(world, title: str, owner: User, tenant_key: str = "a", **extra) -> Note:
+    if MULTITENANT:
+        return Note.all_objects.create(
+            title=title, owner=owner, tenant=world["tenants"][tenant_key], **extra
+        )
+    return Note.objects.create(title=title, owner=owner, **extra)
+
+
+def _rows(response) -> list[dict]:
+    data = response.json()
+    return data["results"] if isinstance(data, dict) else data
+
+
+def _stored(pk: int) -> Note:
+    manager = Note.all_objects if MULTITENANT else Note.objects
+    return manager.get(pk=pk)
+
+
+def test_list_returns_only_the_requesters_rows(world) -> None:
+    _note(world, "alice-1", world["alice"])
+    _note(world, "alice-2", world["alice"])
+    _note(world, "bob-1", world["bob"])
+
+    response = _alice(world).get("/api/notes/")
+
+    assert response.status_code == 200
+    assert sorted(r["title"] for r in _rows(response)) == ["alice-1", "alice-2"]
+
+
+@pytest.mark.parametrize("method", ["get", "patch", "delete"])
+def test_another_users_row_is_not_found(world, method: str) -> None:
+    theirs = _note(world, "bob-1", world["bob"])
+    payload = {"title": "hijacked"} if method == "patch" else None
+
+    kwargs = {"format": "json"} if payload else {}
+    response = getattr(_alice(world), method)(f"/api/notes/{theirs.pk}/", payload, **kwargs)
+
+    assert response.status_code == 404
+    assert _stored(theirs.pk).title == "bob-1"
+
+
+def test_create_ignores_the_owner_in_the_payload(world) -> None:
+    response = _alice(world).post(
+        "/api/notes/", {"title": "mine", "owner": world["bob"].pk}, format="json"
+    )
+
+    assert response.status_code == 201, response.content
+    assert response.json()["owner"] == world["alice"].pk
+    assert _stored(response.json()["id"]).owner == world["alice"]
+
+
+def test_create_does_not_require_an_owner(world) -> None:
+    response = _alice(world).post("/api/notes/", {"title": "no owner given"}, format="json")
+
+    assert response.status_code == 201, response.content
+
+
+def test_update_cannot_change_the_owner(world) -> None:
+    mine = _note(world, "mine", world["alice"])
+
+    response = _alice(world).patch(
+        f"/api/notes/{mine.pk}/", {"owner": world["bob"].pk, "title": "renamed"}, format="json"
+    )
+
+    assert response.status_code == 200, response.content
+    assert _stored(mine.pk).owner == world["alice"]
+    assert _stored(mine.pk).title == "renamed"
+
+
+def test_other_user_foreign_keys_stay_writable(world) -> None:
+    mine = _note(world, "mine", world["alice"])
+
+    response = _alice(world).patch(
+        f"/api/notes/{mine.pk}/", {"assignee": world["bob"].pk}, format="json"
+    )
+
+    assert response.status_code == 200, response.content
+    assert _stored(mine.pk).assignee == world["bob"]
+
+
+def test_anonymous_requests_are_rejected(world) -> None:
+    _note(world, "alice-1", world["alice"])
+
+    assert APIClient().get("/api/notes/").status_code in {401, 403}
+
+
+def test_the_schema_marks_the_owner_read_only(world) -> None:
+    schema = APIClient().get("/api/schema/", {"format": "json"}).json()
+
+    owner = schema["components"]["schemas"]["Note"]["properties"]["owner"]
+    assignee = schema["components"]["schemas"]["Note"]["properties"]["assignee"]
+    assert owner.get("readOnly") is True
+    assert not assignee.get("readOnly")
+
+
+@pytest.mark.skipif(not MULTITENANT, reason="plain project")
+def test_tenant_and_owner_scoping_apply_together(world) -> None:
+    _note(world, "alice-a", world["alice"], "a")
+    _note(world, "bob-a", world["bob"], "a")
+    _note(world, "carol-b", world["carol"], "b")
+
+    alice_sees = _rows(_alice(world).get("/api/notes/"))
+    bob_sees = _rows(_client(world["bob"], world["tenants"]["a"]).get("/api/notes/"))
+    carol_sees = _rows(_client(world["carol"], world["tenants"]["b"]).get("/api/notes/"))
+
+    assert [r["title"] for r in alice_sees] == ["alice-a"]
+    assert [r["title"] for r in bob_sees] == ["bob-a"]  # same tenant, other owner: invisible
+    assert [r["title"] for r in carol_sees] == ["carol-b"]
+
+
+@pytest.mark.skipif(not MULTITENANT, reason="plain project")
+def test_a_users_row_in_another_tenant_is_invisible(world) -> None:
+    # Alice owns a row, but in tenant B (she is not a member there): never visible through A.
+    stray = _note(world, "alice-in-b", world["alice"], "b")
+
+    assert [r["title"] for r in _rows(_alice(world).get("/api/notes/"))] == []
+    assert _alice(world).get(f"/api/notes/{stray.pk}/").status_code == 404

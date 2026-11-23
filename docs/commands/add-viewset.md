@@ -31,4 +31,4 @@ Viewset in `views.py` + router wiring. Missing serializers are created automatic
 - [add-permission](add-permission.md)
 - [add-action](add-action.md)
 
-Generated viewsets use `IsAuthenticated` and no ownership scoping: any authenticated user can read and change every row. See [Who can access what](../concepts/security.md#who-can-access-what).
+Generated viewsets use `IsAuthenticated` and no ownership scoping: any authenticated user can read and change every row. With `--permission <Class>` where `<Class>` is a generated owner permission (`add-permission --preset owner`), the viewset is owner-scoped; see [Who can access what](../concepts/security.md#who-can-access-what).

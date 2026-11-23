@@ -18,6 +18,8 @@ _VIEWSET_CLASS_RE = re.compile(
     r"class\s+(?P<vs>\w+ViewSet)\s*\((?P<bases>[^)]*)\)\s*:",
 )
 
+_OWNER_FIELD_RE = re.compile(r"""^\s*owner_field\s*=\s*["'](?P<field>\w+)["']""", re.M)
+
 _QUERYSET_RE = re.compile(
     r"queryset\s*=\s*(?P<model>\w+)\.objects",
 )
@@ -35,6 +37,14 @@ def _model_from_viewset_body(class_body: str, viewset_name: str) -> str | None:
     if viewset_name.endswith("ViewSet") and len(viewset_name) > len("ViewSet"):
         return viewset_name[: -len("ViewSet")]
     return None
+
+
+def _owner_field(bases: str, class_body: str) -> str | None:
+    """Owner attribute of a viewset that uses ``OwnerScopedMixin``, else None."""
+    if "OwnerScopedMixin" not in bases:
+        return None
+    match = _OWNER_FIELD_RE.search(class_body)
+    return match.group("field") if match else "owner"
 
 
 def _split_viewset_classes(source: str) -> list[tuple[str, str, str]]:
@@ -115,6 +125,7 @@ def discover_app_resources(project_root: Path, app_name: str) -> list[ResourceSp
                 api_collection=f"/api/{plural}/",
                 viewset_name=vs_name,
                 skip_reason=skip,
+                owner_field=_owner_field(bases, body),
             )
         )
     return specs

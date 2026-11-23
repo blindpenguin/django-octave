@@ -79,7 +79,8 @@ def test_add_permission_accepts_a_normal_owner_attr(project: Path) -> None:
     assert result.exit_code == 0, result.output
     permissions = (project / "apps" / "blog" / "permissions.py").read_text(encoding="utf-8")
     ast.parse(permissions)
-    assert 'getattr(obj, "created_by", None)' in permissions
+    assert 'owner_attr = "created_by"' in permissions
+    assert "getattr(obj, self.owner_attr, None)" in permissions
 
 
 @pytest.mark.parametrize(

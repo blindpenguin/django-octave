@@ -70,7 +70,8 @@ def test_add_permission_create_refuse_force(tmp_path: Path) -> None:
     assert perms.is_file()
     text = perms.read_text(encoding="utf-8")
     assert "class IsOwner(BasePermission)" in text
-    assert 'getattr(obj, "owner"' in text
+    assert 'owner_attr = "owner"' in text
+    assert "getattr(obj, self.owner_attr, None)" in text
 
     refused = runner.invoke(
         app,

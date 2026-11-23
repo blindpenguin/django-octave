@@ -73,13 +73,20 @@ def build_permission_class(
     if preset == "owner":
         return f'''
 class {class_name}(BasePermission):
-    """Allow access only to the object's owner ({owner_attr})."""
+    """Allow access only to the object's owner ({owner_attr}).
+
+    This checks single objects. To also limit list endpoints and set the owner on
+    the server, the viewset needs ``OwnerScopedMixin`` (``add-permission ... --viewset``
+    does that for you; the mixin reads the ``owner_attr`` below).
+    """
+
+    owner_attr = "{owner_attr}"
 
     def has_permission(self, request, view) -> bool:
         return bool(request.user and request.user.is_authenticated)
 
     def has_object_permission(self, request, view, obj) -> bool:
-        owner = getattr(obj, "{owner_attr}", None)
+        owner = getattr(obj, self.owner_attr, None)
         if owner is None:
             return False
         return owner == request.user
