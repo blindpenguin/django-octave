@@ -72,3 +72,17 @@ def test_patch_idempotent(tmp_path: Path) -> None:
     assert 'path("api/shop/", include("apps.shop.urls"))' in urls.read_text(
         encoding="utf-8"
     )
+
+
+def test_detect_multitenancy_via_tenancy_module_only(tmp_path: Path) -> None:
+    root = _make_project(tmp_path)
+    (root / "apps" / "core" / "tenancy.py").write_text("", encoding="utf-8")
+    assert detect_project(root).use_multitenancy is True
+
+
+def test_detect_multitenancy_legacy_middleware_layout(tmp_path: Path) -> None:
+    root = _make_project(tmp_path)
+    (root / "apps" / "core" / "middleware.py").write_text(
+        "class TenantMiddleware: ...\n", encoding="utf-8"
+    )
+    assert detect_project(root).use_multitenancy is True

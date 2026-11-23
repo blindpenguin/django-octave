@@ -6,6 +6,7 @@ from __future__ import annotations
 import uuid
 from contextvars import ContextVar
 
+from django.core.exceptions import PermissionDenied
 {% endif %}
 from django.db import models
 {% if use_multitenancy %}
@@ -115,5 +116,8 @@ class TenantAwareModel(TimeStampedModel):
                 msg = "Cannot save tenant-scoped model without a current tenant"
                 raise RuntimeError(msg)
             self.tenant = tenant
+        elif tenant is not None and self.tenant_id != tenant.id:
+            msg = "Cannot save a row for a tenant other than the current tenant"
+            raise PermissionDenied(msg)
         super().save(*args, **kwargs)
 {% endif %}

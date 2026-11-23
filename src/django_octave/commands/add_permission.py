@@ -17,6 +17,7 @@ from django_octave.api_parts.permission_gen import (
     PermissionWireError,
     resolve_viewset_class_name,
     validate_preset,
+    viewset_has_tenant_mixin,
     wire_permission_to_viewset,
     write_permission,
 )
@@ -129,6 +130,14 @@ def add_permission_cmd(
                 append=options.append,
             )
             wired = vs
+            if preset_name == "tenant_member" and not viewset_has_tenant_mixin(
+                app_dir / "views.py", vs
+            ):
+                err_console.print(
+                    f"[yellow]{vs} has no TenantScopedMixin, so tenant_member will "
+                    f"deny every request. Add it first in the class bases "
+                    f"(from apps.core.tenancy import TenantScopedMixin).[/yellow]"
+                )
     except (
         NotOctaveProjectError,
         InvalidAppNameError,

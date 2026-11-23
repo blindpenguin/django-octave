@@ -6,6 +6,9 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
+{% if use_multitenancy %}
+from apps.core.tenancy import TenantScopedMixin
+{% endif %}
 from apps.{{ app_name }}.models import {{ model_name }}
 from apps.{{ app_name }}.serializers import {{ model_name }}Serializer
 
@@ -18,7 +21,7 @@ from apps.{{ app_name }}.serializers import {{ model_name }}Serializer
     partial_update=extend_schema(tags=["{{ app_name }}"]),
     destroy=extend_schema(tags=["{{ app_name }}"]),
 )
-class {{ model_name }}ViewSet(viewsets.ModelViewSet):
+class {{ model_name }}ViewSet({% if use_multitenancy %}TenantScopedMixin, {% endif %}viewsets.ModelViewSet):
     queryset = {{ model_name }}.objects.all()
     serializer_class = {{ model_name }}Serializer
     permission_classes = [IsAuthenticated]

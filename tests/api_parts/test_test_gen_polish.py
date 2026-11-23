@@ -53,7 +53,6 @@ def test_api_test_anonymous_modes() -> None:
     deny = build_api_test_source(
         app_name="blog",
         model_name="Post",
-        skip_tenant=False,
         anonymous_list_ok=False,
     )
     assert "test_list_requires_auth" in deny
@@ -62,7 +61,6 @@ def test_api_test_anonymous_modes() -> None:
     open_ = build_api_test_source(
         app_name="blog",
         model_name="Post",
-        skip_tenant=False,
         anonymous_list_ok=True,
     )
     assert "test_list_anonymous_ok" in open_

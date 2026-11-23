@@ -12,6 +12,11 @@ from django_octave.models_gen.cst_util import (
     upsert_class,
 )
 from django_octave.naming import pascal_to_snake, pluralize
+from django_octave.tenancy import (
+    TENANCY_IMPORT,
+    ensure_tenancy_module,
+    viewset_bases,
+)
 
 
 def _serializer_class(model_name: str, fields: list[FieldSpec]) -> str:
@@ -39,7 +44,7 @@ class {model_name}Admin(admin.ModelAdmin):
 """
 
 
-def _viewset_class(model_name: str, fields: list[FieldSpec]) -> str:
+def _viewset_class(model_name: str, fields: list[FieldSpec], *, scoped: bool) -> str:
     tag = pascal_to_snake(model_name)
     filter_fields = filterable_field_names(fields)
     filter_repr = "[" + ", ".join(f'"{n}"' for n in filter_fields) + "]"
@@ -54,7 +59,7 @@ def _viewset_class(model_name: str, fields: list[FieldSpec]) -> str:
     partial_update=extend_schema(tags=["{tag}"]),
     destroy=extend_schema(tags=["{tag}"]),
 )
-class {model_name}ViewSet(viewsets.ModelViewSet):
+class {model_name}ViewSet({viewset_bases(scoped=scoped)}):
     queryset = {model_name}.objects.all()
     serializer_class = {model_name}Serializer
     permission_classes = [IsAuthenticated]
@@ -89,7 +94,9 @@ from apps.{app_name}.models import {model_name}
     )
 
 
-def _write_views_file(path: Path, app_name: str, model_name: str, fields: list[FieldSpec]) -> None:
+def _write_views_file(
+    path: Path, app_name: str, model_name: str, fields: list[FieldSpec], *, scoped: bool
+) -> None:
     path.write_text(
         f'''"""API views for {app_name}."""
 
@@ -99,9 +106,9 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
-from apps.{app_name}.models import {model_name}
+{TENANCY_IMPORT if scoped else ""}from apps.{app_name}.models import {model_name}
 from apps.{app_name}.serializers import {model_name}Serializer
-{_viewset_class(model_name, fields)}
+{_viewset_class(model_name, fields, scoped=scoped)}
 ''',
         encoding="utf-8",
     )
@@ -138,8 +145,16 @@ def sync_api_stubs(
     model_name: str,
     fields: list[FieldSpec],
     force: bool,
+    use_multitenancy: bool = False,
 ) -> None:
-    """Create or update DRF stubs for ``model_name`` in ``app_dir``."""
+    """Create or update DRF stubs for ``model_name`` in ``app_dir``.
+
+    With ``use_multitenancy`` the model is tenant-aware, so its viewset gets
+    ``TenantScopedMixin``.
+    """
+    scoped = use_multitenancy
+    if scoped:
+        ensure_tenancy_module(app_dir.parent)
     serializers = app_dir / "serializers.py"
     admin = app_dir / "admin.py"
     views = app_dir / "views.py"
@@ -180,7 +195,7 @@ def sync_api_stubs(
         )
 
     if not views.exists():
-        _write_views_file(views, app_name, model_name, fields)
+        _write_views_file(views, app_name, model_name, fields, scoped=scoped)
     else:
         text = views.read_text(encoding="utf-8")
         text = add_to_import(text, f"apps.{app_name}.models", model_name)
@@ -189,12 +204,13 @@ def sync_api_stubs(
         upsert_class(
             views,
             f"{model_name}ViewSet",
-            _viewset_class(model_name, fields),
+            _viewset_class(model_name, fields, scoped=scoped),
             force=force,
             header_imports=[
                 "from drf_spectacular.utils import extend_schema, extend_schema_view\n",
                 "from rest_framework import viewsets\n",
                 "from rest_framework.permissions import IsAuthenticated\n",
+                *([TENANCY_IMPORT] if scoped else []),
             ],
         )
 

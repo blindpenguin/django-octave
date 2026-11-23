@@ -9,6 +9,12 @@ uv run ruff check src tests
 uv run ruff format src tests
 ```
 
+End-to-end tests generate a real project and run `uv sync` (network, ~10 s). They are skipped by default:
+
+```bash
+OCTAVE_E2E=1 uv run pytest -m e2e
+```
+
 ## Documentation
 
 User docs live under `docs/` and are built with MkDocs Material:

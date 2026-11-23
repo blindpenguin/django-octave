@@ -27,6 +27,7 @@ def _has_tenant_aware_model(models_path: Path) -> bool:
 
 
 def _has_tenant_middleware(middleware_path: Path) -> bool:
+    """Legacy layout (before ``tenancy.py``): tenant bound in Django middleware."""
     if not middleware_path.is_file():
         return False
     text = middleware_path.read_text(encoding="utf-8")
@@ -65,8 +66,10 @@ def detect_project(path: Path) -> OctaveProject:
 
     core_models = apps_dir / "core" / "models.py"
     core_middleware = apps_dir / "core" / "middleware.py"
-    use_mt = _has_tenant_aware_model(core_models) or _has_tenant_middleware(
-        core_middleware
+    use_mt = (
+        _has_tenant_aware_model(core_models)
+        or (apps_dir / "core" / "tenancy.py").is_file()
+        or _has_tenant_middleware(core_middleware)
     )
 
     return OctaveProject(

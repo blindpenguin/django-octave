@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 
 import pytest
@@ -42,6 +43,7 @@ def test_render_sqlite_baseline(tmp_path: Path) -> None:
     assert (target / "apps" / "users" / "migrations" / "0001_initial.py").is_file()
     assert not (target / "Dockerfile").exists()
     assert not (target / "apps" / "core" / "middleware.py").exists()
+    assert not (target / "apps" / "core" / "tenancy.py").exists()
     pyproject = (target / "pyproject.toml").read_text(encoding="utf-8")
     assert "psycopg" not in pyproject
     assert "AUTH_USER_MODEL" in (target / "config" / "settings" / "base.py").read_text(
@@ -64,7 +66,8 @@ def test_render_docker_and_multitenancy(tmp_path: Path) -> None:
     target = render_project(ctx)
     assert (target / "Dockerfile").is_file()
     assert (target / "docker-compose.yml").is_file()
-    assert (target / "apps" / "core" / "middleware.py").is_file()
+    assert (target / "apps" / "core" / "tenancy.py").is_file()
+    assert not (target / "apps" / "core" / "middleware.py").exists()
     assert (target / "apps" / "core" / "migrations" / "0001_initial.py").is_file()
     models = (target / "apps" / "core" / "models.py").read_text(encoding="utf-8")
     assert "class Tenant" in models
@@ -113,3 +116,23 @@ def test_render_prod_settings_reject_placeholder_secret(tmp_path: Path) -> None:
     assert "ImproperlyConfigured" in prod
     base = (target / "config" / "settings" / "base.py").read_text(encoding="utf-8")
     assert "DEFAULT_THROTTLE_RATES" in base
+
+
+def test_render_multitenancy_binds_tenant_in_drf_not_middleware(tmp_path: Path) -> None:
+    ctx = ProjectContext.from_options(_options(tmp_path, multitenancy=True))
+    target = render_project(ctx)
+    settings = (target / "config" / "settings" / "base.py").read_text(encoding="utf-8")
+    tenancy = (target / "apps" / "core" / "tenancy.py").read_text(encoding="utf-8")
+    assert "Tenant" not in settings.split("MIDDLEWARE", 1)[1].split("]", 1)[0]
+    assert "class TenantScopedMixin" in tenancy
+    assert "class TenantRequired" in tenancy
+    models = (target / "apps" / "core" / "models.py").read_text(encoding="utf-8")
+    assert "PermissionDenied" in models  # foreign-tenant save guard
+
+
+@pytest.mark.parametrize("multitenancy", [False, True])
+def test_render_all_python_files_parse(tmp_path: Path, multitenancy: bool) -> None:
+    ctx = ProjectContext.from_options(_options(tmp_path, multitenancy=multitenancy))
+    target = render_project(ctx)
+    for path in target.rglob("*.py"):
+        ast.parse(path.read_text(encoding="utf-8"), filename=str(path))

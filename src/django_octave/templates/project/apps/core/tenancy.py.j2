@@ -1,0 +1,60 @@
+"""Bind the current tenant for DRF views (after authentication, before permissions).
+
+Django middleware runs before DRF authenticates JWT requests, so the tenant is
+resolved here instead. Add ``TenantScopedMixin`` first in the bases of any
+viewset that serves tenant-scoped data::
+
+    class NoteViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+        queryset = Note.objects.all()
+
+To add filtering, override ``get_queryset`` and start from ``super()``.
+"""
+
+from __future__ import annotations
+
+import uuid
+
+from rest_framework.exceptions import PermissionDenied
+
+from apps.core.models import Tenant, set_current_tenant
+
+
+class TenantRequired(PermissionDenied):
+    """One response for missing, malformed, unknown and non-member tenants."""
+
+    default_detail = "A valid X-Tenant-ID header is required."
+    default_code = "tenant_required"
+
+
+class TenantScopedMixin:
+    tenant_header = "X-Tenant-ID"
+
+    def perform_authentication(self, request):  # type: ignore[no-untyped-def]
+        super().perform_authentication(request)  # type: ignore[misc]
+        tenant = None
+        user = request.user
+        if user is not None and user.is_authenticated:
+            tenant = self._resolve_tenant(request, user)
+        request.tenant = tenant
+        set_current_tenant(tenant)
+
+    def _resolve_tenant(self, request, user) -> Tenant:  # type: ignore[no-untyped-def]
+        raw = request.headers.get(self.tenant_header)
+        try:
+            tenant_id = uuid.UUID(raw)
+        except (TypeError, ValueError, AttributeError):
+            raise TenantRequired from None
+        tenant = Tenant.objects.filter(id=tenant_id, memberships__user=user).first()
+        if tenant is None:
+            raise TenantRequired
+        return tenant
+
+    def get_queryset(self):  # type: ignore[no-untyped-def]
+        # Evaluated per request: ``objects`` is scoped to the tenant bound above.
+        return self.queryset.model.objects.all()
+
+    def dispatch(self, request, *args, **kwargs):  # type: ignore[no-untyped-def]
+        try:
+            return super().dispatch(request, *args, **kwargs)  # type: ignore[misc]
+        finally:
+            set_current_tenant(None)

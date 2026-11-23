@@ -123,6 +123,7 @@ def add_viewset_cmd(
                 ordering=csv_to_list(options.ordering),
                 tag=options.tag,
                 force=options.force,
+                use_multitenancy=project.use_multitenancy,
             ),
         )
     except (

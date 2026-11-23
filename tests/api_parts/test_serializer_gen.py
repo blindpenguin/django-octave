@@ -203,3 +203,22 @@ class UserNestedSerializer(serializers.ModelSerializer):
     assert text.index("class UserNestedSerializer") < text.index(
         "class TicketSerializer"
     )
+
+
+TENANT_SAMPLE = '''
+from django.db import models
+from apps.core.models import TenantAwareModel
+
+
+class Note(TenantAwareModel):
+    name = models.CharField(max_length=255)
+'''
+
+
+def test_resolve_tenant_aware_model_never_exposes_tenant() -> None:
+    info = inspect_model_fields(TENANT_SAMPLE, "Note")
+    fields, _ = resolve_field_lists(info, fields=None, read_only=None, include_id=True)
+    assert "tenant" not in fields
+    assert "tenant_id" not in fields
+    with pytest.raises(SerializerFieldError, match="Unknown field"):
+        resolve_field_lists(info, fields=["tenant"], read_only=None, include_id=True)

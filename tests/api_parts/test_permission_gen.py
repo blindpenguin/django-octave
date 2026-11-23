@@ -14,6 +14,7 @@ from django_octave.api_parts.permission_gen import (
     build_permission_class,
     resolve_viewset_class_name,
     validate_preset,
+    viewset_has_tenant_mixin,
     wire_permission_to_viewset,
     write_permission,
 )
@@ -139,3 +140,21 @@ def test_wire_missing_viewset(tmp_path: Path) -> None:
             permission_class="IsOwner",
             append=False,
         )
+
+
+def test_tenant_member_docstring_names_the_mixin() -> None:
+    src = build_permission_class("IsTenantMember", preset="tenant_member", owner_attr="owner")
+    assert "TenantScopedMixin" in src
+    assert "TenantMiddleware" not in src
+
+
+def test_viewset_has_tenant_mixin(tmp_path: Path) -> None:
+    views = tmp_path / "views.py"
+    views.write_text(
+        "class A(TenantScopedMixin, viewsets.ModelViewSet):\n    pass\n"
+        "class B(viewsets.ModelViewSet):\n    pass\n",
+        encoding="utf-8",
+    )
+    assert viewset_has_tenant_mixin(views, "A") is True
+    assert viewset_has_tenant_mixin(views, "B") is False
+    assert viewset_has_tenant_mixin(views, "Missing") is False

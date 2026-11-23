@@ -54,8 +54,8 @@ Verified by generators-only scaffolds: recipe / support-desk (API green), multit
 
 ### Multitenancy DX (from `mt_demo`)
 
-1. **Tenant-aware factories & smoke tests** — wire `tenant=` (and membership) in factories; stop blanket-skipping API tests when tenancy is on  
-2. **Tenant test fixtures** — reusable `tenant` / `tenant_client` helpers in generated `conftest`  
+1. ~~**Tenant-aware factories & smoke tests**~~ — done (`fix-multitenancy-jwt`)  
+2. ~~**Tenant test fixtures**~~ — done (`fix-multitenancy-jwt`)  
 
 ### Kickstart / project quality
 
@@ -72,9 +72,8 @@ Verified by generators-only scaffolds: recipe / support-desk (API green), multit
 
 ## Suggested priority
 
-1. Tenant-aware test/factory DX (close the multitenancy smoke gap)  
-2. `doctor` / `check` · hardening · Sentry / health  
-3. Generated-project CI · PyPI Trusted Publishing · `upgrade-templates`  
+1. `doctor` / `check` · hardening · Sentry / health  
+2. Generated-project CI · PyPI Trusted Publishing · `upgrade-templates`  
 
 Approvals: `./scripts/spec-dashboard.sh` → Spec Workflow dashboard.
 

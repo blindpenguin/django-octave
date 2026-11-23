@@ -39,7 +39,7 @@ def _should_skip(template_rel: Path, ctx: ProjectContext) -> bool:
     # Multitenancy-only files live under optional path markers.
     if "multitenancy" in parts and not ctx.use_multitenancy:
         return True
-    if template_rel.as_posix() == "apps/core/middleware.py.j2" and not ctx.use_multitenancy:
+    if template_rel.as_posix() == "apps/core/tenancy.py.j2" and not ctx.use_multitenancy:
         return True
     # Concrete core migrations only apply when multitenancy models exist.
     if (

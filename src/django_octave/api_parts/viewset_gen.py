@@ -22,6 +22,12 @@ from django_octave.models_gen.cst_util import (
     upsert_class,
 )
 from django_octave.naming import pascal_to_snake
+from django_octave.tenancy import (
+    TENANCY_IMPORT,
+    ensure_tenancy_module,
+    is_tenant_scoped,
+    viewset_bases,
+)
 
 PERMISSIONS: dict[str, str] = {
     "IsAuthenticated": "rest_framework.permissions.IsAuthenticated",
@@ -52,6 +58,7 @@ class ViewSetOptions:
     ordering: list[str] | None = None
     tag: str | None = None
     force: bool = False
+    use_multitenancy: bool = False
 
 
 def validate_permission(name: str) -> str:
@@ -138,6 +145,7 @@ def build_viewset_class(
     search: list[str],
     ordering: list[str],
     tag: str,
+    scoped: bool = False,
 ) -> str:
     filter_repr = "[" + ", ".join(f'"{n}"' for n in filters) + "]"
     search_repr = "[" + ", ".join(f'"{n}"' for n in search) + "]"
@@ -151,7 +159,7 @@ def build_viewset_class(
     partial_update=extend_schema(tags=["{tag}"]),
     destroy=extend_schema(tags=["{tag}"]),
 )
-class {model_name}ViewSet(viewsets.ModelViewSet):
+class {model_name}ViewSet({viewset_bases(scoped=scoped)}):
     queryset = {model_name}.objects.all()
     serializer_class = {model_name}Serializer
     permission_classes = [{permission}]
@@ -167,6 +175,7 @@ def _views_header(
     *,
     permission: str,
     permission_module: str,
+    scoped: bool = False,
 ) -> str:
     if permission_module == "rest_framework.permissions":
         perm_import = f"from rest_framework.permissions import {permission}"
@@ -180,7 +189,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import viewsets
 {perm_import}
 
-from apps.{app_name}.models import {model_name}
+{TENANCY_IMPORT if scoped else ""}from apps.{app_name}.models import {model_name}
 from apps.{app_name}.serializers import {model_name}Serializer
 '''
 
@@ -256,6 +265,11 @@ def write_viewset(
         ordering=options.ordering,
     )
     tag = options.tag or pascal_to_snake(options.model_name)
+    scoped = is_tenant_scoped(
+        use_multitenancy=options.use_multitenancy, tenant_aware=info.has_tenant_aware
+    )
+    if scoped:
+        ensure_tenancy_module(app_dir.parent)
 
     _ensure_serializer(
         app_dir,
@@ -272,6 +286,7 @@ def write_viewset(
         search=search_fields,
         ordering=ordering_fields,
         tag=tag,
+        scoped=scoped,
     )
 
     perm_import_line = f"from {perm_module} import {permission}\n"
@@ -283,6 +298,7 @@ def write_viewset(
                 options.model_name,
                 permission=permission,
                 permission_module=perm_module,
+                scoped=scoped,
             )
             + class_src,
             encoding="utf-8",
@@ -307,6 +323,7 @@ def write_viewset(
                 "from drf_spectacular.utils import extend_schema, extend_schema_view\n",
                 "from rest_framework import viewsets\n",
                 perm_import_line,
+                *([TENANCY_IMPORT] if scoped else []),
             ],
         )
         views_path.write_text(source, encoding="utf-8")
@@ -319,6 +336,7 @@ def write_viewset(
                 "from drf_spectacular.utils import extend_schema, extend_schema_view\n",
                 "from rest_framework import viewsets\n",
                 perm_import_line,
+                *([TENANCY_IMPORT] if scoped else []),
             ],
         )
         cleaned = coalesce_from_imports(views_path.read_text(encoding="utf-8"))

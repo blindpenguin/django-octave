@@ -143,12 +143,33 @@ def build_model_factory_source(
         f"        model = {model_name}",
         "",
     ]
+    if info.has_tenant_aware:
+        lines.insert(0, '    tenant = factory.SubFactory("tests.factories.tenant.TenantFactory")')
     if lines:
         body.extend(lines)
     else:
         body.append("    pass")
     body.append("")
     return "\n".join(imports + body)
+
+
+def build_tenant_factory_source() -> str:
+    return '''"""Tenant factory for multitenancy API tests."""
+
+from __future__ import annotations
+
+import factory
+
+from apps.core.models import Tenant
+
+
+class TenantFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Tenant
+
+    name = factory.Sequence(lambda n: f"Tenant {n}")
+    slug = factory.Sequence(lambda n: f"tenant-{n}")
+'''
 
 
 def build_user_factory_source() -> str:
@@ -209,19 +230,17 @@ def build_api_test_source(
     *,
     app_name: str,
     model_name: str,
-    skip_tenant: bool,
+    tenant_aware: bool = False,
     anonymous_list_ok: bool = False,
     owner_kw: str = "",
 ) -> str:
     snake = pascal_to_snake(model_name)
     stem = factory_module_stem(app_name, model_name)
     factory_name = factory_class_name(model_name)
-    skip_deco = (
-        '@pytest.mark.skip(reason="tenant setup required")\n' if skip_tenant else ""
-    )
-    factory_call = f"{factory_name}({owner_kw})" if owner_kw else f"{factory_name}()"
+    kwargs = ", ".join(k for k in ("tenant=tenant" if tenant_aware else "", owner_kw) if k)
+    factory_call = f"{factory_name}({kwargs})"
     if anonymous_list_ok:
-        list_anon = f'''{skip_deco}@pytest.mark.django_db
+        list_anon = f'''@pytest.mark.django_db
 def test_list_anonymous_ok(api_client) -> None:
     {factory_name}()
     url = reverse("{snake}-list")
@@ -229,11 +248,67 @@ def test_list_anonymous_ok(api_client) -> None:
     assert response.status_code == status.HTTP_200_OK
 '''
     else:
-        list_anon = f'''{skip_deco}@pytest.mark.django_db
+        list_anon = f'''@pytest.mark.django_db
 def test_list_requires_auth(api_client) -> None:
     url = reverse("{snake}-list")
     response = api_client.get(url)
     assert response.status_code in {{status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN}}
+'''
+    if tenant_aware:
+        owner_fixture = ", user" if owner_kw else ""
+        return f'''"""API tests for {app_name}.{model_name} (tenant-scoped)."""
+
+from __future__ import annotations
+
+import pytest
+from django.urls import reverse
+from rest_framework import status
+
+from tests.factories.{stem} import {factory_name}
+from tests.factories.tenant import TenantFactory
+
+
+def _items(data):  # type: ignore[no-untyped-def]
+    return data["results"] if isinstance(data, dict) else data
+
+
+{list_anon}
+
+@pytest.mark.django_db
+def test_list_without_tenant_header_forbidden(auth_client) -> None:
+    response = auth_client.get(reverse("{snake}-list"))
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.django_db
+def test_list_authenticated(tenant_client, tenant{owner_fixture}) -> None:
+    {factory_call}
+    response = tenant_client.get(reverse("{snake}-list"))
+    assert response.status_code == status.HTTP_200_OK
+    assert len(_items(response.json())) == 1
+
+
+@pytest.mark.django_db
+def test_retrieve_authenticated(tenant_client, tenant{owner_fixture}) -> None:
+    obj = {factory_call}
+    response = tenant_client.get(reverse("{snake}-detail", kwargs={{"pk": obj.pk}}))
+    assert response.status_code == status.HTTP_200_OK
+
+
+@pytest.mark.django_db
+def test_list_excludes_other_tenants(tenant_client, tenant{owner_fixture}) -> None:
+    {factory_call}
+    {factory_name}(tenant=TenantFactory(){", " + owner_kw if owner_kw else ""})
+    response = tenant_client.get(reverse("{snake}-list"))
+    assert response.status_code == status.HTTP_200_OK
+    assert len(_items(response.json())) == 1
+
+
+@pytest.mark.django_db
+def test_retrieve_other_tenant_not_found(tenant_client, tenant{owner_fixture}) -> None:
+    other = {factory_name}(tenant=TenantFactory(){", " + owner_kw if owner_kw else ""})
+    response = tenant_client.get(reverse("{snake}-detail", kwargs={{"pk": other.pk}}))
+    assert response.status_code == status.HTTP_404_NOT_FOUND
 '''
     auth_args = "auth_client, user" if owner_kw else "auth_client"
     return f'''"""API smoke tests for {app_name}.{model_name}."""
@@ -249,7 +324,7 @@ from tests.factories.{stem} import {factory_name}
 
 {list_anon}
 
-{skip_deco}@pytest.mark.django_db
+@pytest.mark.django_db
 def test_list_authenticated({auth_args}) -> None:
     {factory_call}
     response = auth_client.get(reverse("{snake}-list"))
@@ -258,7 +333,7 @@ def test_list_authenticated({auth_args}) -> None:
     assert isinstance(data, list) or "results" in data
 
 
-{skip_deco}@pytest.mark.django_db
+@pytest.mark.django_db
 def test_retrieve_authenticated({auth_args}) -> None:
     obj = {factory_call}
     response = auth_client.get(reverse("{snake}-detail", kwargs={{"pk": obj.pk}}))
@@ -315,25 +390,52 @@ def auth_client(user):
 """
 
 
-def ensure_test_fixtures(conftest_path: Path) -> bool:
-    """Append api_client/user/auth_client fixtures if missing. Return True if changed."""
+_TENANT_FIXTURE_BLOCK = """
+@pytest.fixture
+def tenant(user):
+    from apps.core.models import Membership, Tenant
+
+    tenant = Tenant.objects.create(name="Test Tenant", slug="test-tenant")
+    Membership.objects.create(user=user, tenant=tenant)
+    return tenant
+
+
+@pytest.fixture
+def tenant_client(user, tenant):
+    from rest_framework.test import APIClient
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+    client.credentials(HTTP_X_TENANT_ID=str(tenant.id))
+    return client
+"""
+
+
+def ensure_test_fixtures(conftest_path: Path, *, use_multitenancy: bool = False) -> bool:
+    """Append missing api_client/user/auth_client (and tenant) fixtures.
+
+    Return True if the file changed.
+    """
     if not conftest_path.exists():
-        conftest_path.write_text(
+        source = (
             '"""Pytest configuration."""\n\nfrom __future__ import annotations\n\n'
-            "import pytest\n" + _FIXTURE_BLOCK,
-            encoding="utf-8",
+            "import pytest\n"
         )
-        return True
-    source = conftest_path.read_text(encoding="utf-8")
-    if (
+    else:
+        source = conftest_path.read_text(encoding="utf-8")
+    original = source
+    if not (
         "def api_client" in source
         and "def auth_client" in source
         and "def user" in source
     ):
+        if "import pytest" not in source:
+            source = "import pytest\n" + source
+        source = source.rstrip() + "\n" + _FIXTURE_BLOCK
+    if use_multitenancy and "def tenant_client" not in source:
+        source = source.rstrip() + "\n" + _TENANT_FIXTURE_BLOCK
+    if source == original and conftest_path.exists():
         return False
-    if "import pytest" not in source:
-        source = "import pytest\n" + source
-    source = source.rstrip() + "\n" + _FIXTURE_BLOCK
     conftest_path.write_text(source, encoding="utf-8")
     return True
 
@@ -405,7 +507,12 @@ def write_tests(
     )
     written.append(factory_path)
 
-    skip_tenant = use_multitenancy and info.has_tenant_aware
+    tenant_aware = use_multitenancy and info.has_tenant_aware
+    if tenant_aware:
+        tenant_factory = factories_dir / "tenant.py"
+        if not tenant_factory.exists():
+            tenant_factory.write_text(build_tenant_factory_source(), encoding="utf-8")
+            written.append(tenant_factory)
     if has_viewset:
         views_src = views_path.read_text(encoding="utf-8")
         anonymous_ok = detect_viewset_allows_anonymous(
@@ -415,7 +522,7 @@ def write_tests(
             build_api_test_source(
                 app_name=options.app_name,
                 model_name=options.model_name,
-                skip_tenant=skip_tenant,
+                tenant_aware=tenant_aware,
                 anonymous_list_ok=anonymous_ok,
                 owner_kw=_owner_factory_kw(info),
             ),
@@ -435,5 +542,5 @@ def write_tests(
         written.append(model_path)
 
     format_written_python(factory_path)
-    ensure_test_fixtures(tests_dir / "conftest.py")
+    ensure_test_fixtures(tests_dir / "conftest.py", use_multitenancy=tenant_aware)
     return written

@@ -33,6 +33,7 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = ["e2e: generates a real project and runs it (needs network; set OCTAVE_E2E=1)"]
 
 [tool.ruff]
 target-version = "py314"

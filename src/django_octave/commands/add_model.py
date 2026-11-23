@@ -109,6 +109,7 @@ def add_model_cmd(
             model_name=model,
             fields=fields,
             force=options.force,
+            use_multitenancy=project.use_multitenancy,
         )
     except (
         NotOctaveProjectError,

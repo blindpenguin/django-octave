@@ -106,7 +106,11 @@ class {class_name}(BasePermission):
     if preset == "tenant_member":
         return f'''
 class {class_name}(BasePermission):
-    """Require authenticated user with a bound request.tenant (TenantMiddleware)."""
+    """Require an authenticated user with a tenant bound by TenantScopedMixin.
+
+    The viewset must inherit ``TenantScopedMixin``; without it ``request.tenant``
+    is never set and every request is denied.
+    """
 
     def has_permission(self, request, view) -> bool:
         if not (request.user and request.user.is_authenticated):
@@ -176,6 +180,15 @@ def write_permission(
         header_imports=header_imports,
     )
     return path
+
+
+def viewset_has_tenant_mixin(views_path: Path, viewset_class: str) -> bool:
+    """True if ``viewset_class`` lists ``TenantScopedMixin`` among its bases."""
+    match = re.search(
+        rf"class\s+{re.escape(viewset_class)}\s*\(([^)]*)\)",
+        views_path.read_text(encoding="utf-8"),
+    )
+    return bool(match and "TenantScopedMixin" in match.group(1))
 
 
 def resolve_viewset_class_name(raw: str) -> str:

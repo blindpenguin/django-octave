@@ -22,7 +22,7 @@ cd /path/to/project && uv run pytest
   - `AllowAny` viewsets: anonymous list expects 200
   - Owner-style User FKs (`author` / `assignee` / …): authenticated smoke tests pass `field=user`
 - Without a viewset: model smoke test instead
-- Tenant-aware models on multitenancy projects: API stubs may be `@pytest.mark.skip` until tenant setup is wired
+- Tenant-aware models on multitenancy projects: tests use `tenant` / `tenant_client` fixtures (added to `tests/conftest.py`) and a `TenantFactory`, and check the `X-Tenant-ID` requirement and cross-tenant isolation — see [Multitenancy](../concepts/multitenancy.md)
 
 ## Important options
 

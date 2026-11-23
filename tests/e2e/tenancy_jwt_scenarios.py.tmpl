@@ -1,0 +1,131 @@
+"""Real-stack multitenancy scenarios (JWT + X-Tenant-ID). Copied into a generated project."""
+
+from __future__ import annotations
+
+import uuid
+
+import pytest
+from django.core.exceptions import PermissionDenied
+from rest_framework.test import APIClient
+
+from apps.core.models import Membership, Tenant, get_current_tenant, set_current_tenant
+from apps.notes.models import Note
+from apps.notes.views import NoteViewSet
+from apps.users.models import User
+
+PASSWORD = "pw-Secret-123"
+FORBIDDEN_BODY = {"detail": "A valid X-Tenant-ID header is required."}
+
+
+def _items(data):
+    return data["results"] if isinstance(data, dict) else data
+
+
+@pytest.fixture
+def world(db):
+    alice = User.objects.create_user("alice@example.com", PASSWORD)
+    bob = User.objects.create_user("bob@example.com", PASSWORD)
+    tenant_a = Tenant.objects.create(name="A", slug="a")
+    tenant_b = Tenant.objects.create(name="B", slug="b")
+    Membership.objects.create(user=alice, tenant=tenant_a)
+    Membership.objects.create(user=bob, tenant=tenant_b)
+    return {"a": tenant_a, "b": tenant_b}
+
+
+def _client(email: str, tenant_id: object | None = None) -> APIClient:
+    client = APIClient()
+    response = client.post(
+        "/api/auth/token/", {"email": email, "password": PASSWORD}, format="json"
+    )
+    assert response.status_code == 200, response.content
+    extra = {"HTTP_AUTHORIZATION": f"Bearer {response.json()['access']}"}
+    if tenant_id is not None:
+        extra["HTTP_X_TENANT_ID"] = str(tenant_id)
+    client.credentials(**extra)
+    return client
+
+
+def test_jwt_create_and_list_with_header(world) -> None:
+    client = _client("alice@example.com", world["a"].id)
+
+    created = client.post("/api/notes/", {"name": "first"}, format="json")
+    listed = client.get("/api/notes/")
+
+    assert created.status_code == 201
+    assert [n["name"] for n in _items(listed.json())] == ["first"]
+    assert Note.all_objects.get(name="first").tenant_id == world["a"].id
+
+
+def test_tenants_are_isolated(world) -> None:
+    alice = _client("alice@example.com", world["a"].id)
+    bob = _client("bob@example.com", world["b"].id)
+    alice.post("/api/notes/", {"name": "alice-note"}, format="json")
+    bob.post("/api/notes/", {"name": "bob-note"}, format="json")
+    bobs_id = Note.all_objects.get(name="bob-note").pk
+
+    assert [n["name"] for n in _items(alice.get("/api/notes/").json())] == ["alice-note"]
+    assert alice.get(f"/api/notes/{bobs_id}/").status_code == 404
+    assert alice.patch(f"/api/notes/{bobs_id}/", {"name": "x"}, format="json").status_code == 404
+    assert alice.delete(f"/api/notes/{bobs_id}/").status_code == 404
+    assert Note.all_objects.get(pk=bobs_id).name == "bob-note"
+
+
+def test_missing_header_is_forbidden(world) -> None:
+    response = _client("alice@example.com").get("/api/notes/")
+
+    assert response.status_code == 403
+    assert response.json() == FORBIDDEN_BODY
+
+
+@pytest.mark.parametrize(
+    "header",
+    ["not-a-uuid", "", "unknown", "other-tenant"],
+    ids=["malformed", "empty", "unknown-tenant", "non-member"],
+)
+def test_bad_tenant_headers_are_indistinguishable(world, header: str) -> None:
+    value = {"unknown": str(uuid.uuid4()), "other-tenant": str(world["b"].id)}.get(
+        header, header
+    )
+
+    response = _client("alice@example.com", value).get("/api/notes/")
+
+    assert response.status_code == 403
+    assert response.json() == FORBIDDEN_BODY
+
+
+def test_foreign_tenant_in_payload_is_ignored(world) -> None:
+    client = _client("alice@example.com", world["a"].id)
+
+    response = client.post(
+        "/api/notes/", {"name": "sneaky", "tenant": str(world["b"].id)}, format="json"
+    )
+
+    assert response.status_code == 201
+    assert Note.all_objects.get(name="sneaky").tenant_id == world["a"].id
+
+
+def test_direct_save_into_foreign_tenant_is_rejected(world) -> None:
+    set_current_tenant(world["a"])
+    try:
+        with pytest.raises(PermissionDenied):
+            Note(name="direct", tenant=world["b"]).save()
+    finally:
+        set_current_tenant(None)
+
+
+def test_tenant_is_cleared_after_a_failing_request(world, monkeypatch) -> None:
+    def boom(self):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(NoteViewSet, "get_queryset", boom)
+    client = _client("alice@example.com", world["a"].id)
+    client.raise_request_exception = False
+
+    response = client.get("/api/notes/")
+
+    assert response.status_code == 500
+    assert get_current_tenant() is None
+
+
+def test_anonymous_request_is_unauthorized(world) -> None:
+    assert APIClient().get("/api/notes/").status_code == 401

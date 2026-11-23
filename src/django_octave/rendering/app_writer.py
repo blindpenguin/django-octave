@@ -9,6 +9,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
 from django_octave.rendering.app_context import AppContext
+from django_octave.tenancy import ensure_tenancy_module
 
 APP_TEMPLATES_ROOT = Path(__file__).resolve().parent.parent / "templates" / "app"
 
@@ -33,6 +34,9 @@ def render_app(ctx: AppContext) -> Path:
             "Use --force to replace it."
         )
         raise AppExistsError(msg)
+
+    if ctx.use_multitenancy:
+        ensure_tenancy_module(ctx.app_dir.parent)
 
     if not APP_TEMPLATES_ROOT.is_dir():
         msg = f"App template directory missing: {APP_TEMPLATES_ROOT}"
