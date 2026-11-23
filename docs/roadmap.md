@@ -1,7 +1,7 @@
 # django-octave — enhancement ideas
 
 Captured for later. Aligned with `.spec-workflow/steering/product.md`.  
-Current package: **0.2.2**. Pick items and open a Spec Workflow spec before implementing.
+Current package: **0.3.0**. Pick items and open a Spec Workflow spec before implementing.
 
 ## Already shipped
 
