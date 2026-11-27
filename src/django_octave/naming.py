@@ -46,9 +46,6 @@ def validate_app_name(raw: str) -> str:
         name = normalize_slug(raw)
     except ValueError as exc:
         raise InvalidAppNameError(str(exc)) from exc
-    if name.startswith("project_") and stripped[:1].isdigit():
-        msg = f"Invalid app name {raw!r}: must start with a letter"
-        raise InvalidAppNameError(msg)
     if not _IDENTIFIER_RE.match(name):
         msg = (
             f"Invalid app name {raw!r}: must be a snake_case Python identifier "

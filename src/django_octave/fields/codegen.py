@@ -81,11 +81,7 @@ def field_source(spec: FieldSpec) -> str:
         return f"{spec.name} = {ctor}({joined})"
 
     args = []
-    if spec.type_key == "char" and spec.max_length is not None:
-        args.append(f"max_length={spec.max_length}")
-    if spec.type_key == "slug" and spec.max_length is not None:
-        args.append(f"max_length={spec.max_length}")
-    if spec.type_key == "email" and spec.max_length is not None:
+    if spec.type_key in {"char", "slug", "email"} and spec.max_length is not None:
         args.append(f"max_length={spec.max_length}")
     if spec.type_key == "decimal":
         args.append(f"max_digits={spec.max_digits}")

@@ -108,3 +108,25 @@ def test_hand_built_unsupported_default_is_rejected(spec: FieldSpec) -> None:
 )
 def test_needs_uuid_import(declaration: str, expected: bool) -> None:
     assert needs_uuid_import([parse_field(declaration)]) is expected
+
+
+@pytest.mark.parametrize("type_key", ["char", "slug", "email"])
+def test_max_length_is_emitted_for_char_like_fields(type_key: str) -> None:
+    spec = FieldSpec(name="f", type_key=type_key, max_length=40)
+
+    source = field_source(spec)
+
+    assert source.endswith("(max_length=40)")
+
+
+@pytest.mark.parametrize("type_key", ["char", "slug", "email"])
+def test_max_length_is_omitted_when_unset(type_key: str) -> None:
+    spec = FieldSpec(name="f", type_key=type_key, max_length=None)
+
+    assert "max_length" not in field_source(spec)
+
+
+def test_max_length_is_not_emitted_for_other_types() -> None:
+    spec = FieldSpec(name="f", type_key="text", max_length=40)
+
+    assert "max_length" not in field_source(spec)

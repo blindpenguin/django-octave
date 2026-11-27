@@ -10,6 +10,7 @@ from typer.testing import CliRunner
 
 from django_octave.cli import app
 from django_octave.frontend_gen.django_patch import (
+    ensure_user_list_api,
     patch_django_for_frontend,
     patch_env_cors,
     patch_env_proxies,
@@ -277,3 +278,17 @@ def test_render_auth_api_keeps_the_other_registration_error_shapes() -> None:
 
     assert '{"password_confirm": "Passwords do not match."}' in source
     assert '"A user with this email already exists."' in source
+
+
+def test_ensure_user_list_api_wires_the_user_list_without_register(
+    tmp_path: Path,
+) -> None:
+    root = _new_project(tmp_path)
+
+    written = ensure_user_list_api(root)
+
+    urls = (root / "config" / "urls.py").read_text(encoding="utf-8")
+    assert 'path("api/users/"' in urls
+    assert "api/auth/register" not in urls
+    assert (root / "apps" / "users" / "auth_api.py") in written
+    assert (root / "config" / "urls.py") in written

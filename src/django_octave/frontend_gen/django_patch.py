@@ -163,7 +163,7 @@ def _import_block(*, include_register: bool) -> str:
     return "\n".join(lines) + "\n"
 
 
-def patch_urls(root: Path, *, include_register: bool, force: bool = False) -> Path:
+def patch_urls(root: Path, *, include_register: bool) -> Path:
     """Wire email JWT obtain, user list, and optional register into ``config/urls.py``."""
     urls_path = root / "config" / "urls.py"
     if not urls_path.is_file():
@@ -247,9 +247,6 @@ def patch_urls(root: Path, *, include_register: bool, force: bool = False) -> Pa
     end = match.end()
     text = text[:end] + "".join(insert_parts) + text[end:]
 
-    if not force and skip_register and include_register:
-        pass
-
     urls_path.write_text(text, encoding="utf-8")
     return urls_path
 
@@ -260,7 +257,7 @@ def ensure_user_list_api(root: Path) -> list[Path]:
     include_register = register_endpoint_present(root)
     written: list[Path] = []
     written.append(write_auth_api(root, force=False))
-    written.append(patch_urls(root, include_register=include_register, force=False))
+    written.append(patch_urls(root, include_register=include_register))
     return written
 
 
@@ -282,7 +279,7 @@ def patch_django_for_frontend(
     auth_api = write_auth_api(root, force=force)
     written.append(auth_api)
 
-    urls = patch_urls(root, include_register=include_register, force=force)
+    urls = patch_urls(root, include_register=include_register)
     written.append(urls)
 
     return written

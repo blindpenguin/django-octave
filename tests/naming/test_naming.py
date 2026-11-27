@@ -24,6 +24,43 @@ def test_validate_rejects(name: str) -> None:
         validate_app_name(name)
 
 
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("Blog", "blog"),
+        ("order-items", "order_items"),
+        (" blog ", "blog"),
+        ("blog 2", "blog_2"),
+        ("_private", "private"),
+        ("project_1x", "project_1x"),
+        # A leading separator is dropped before the digit check, so a digit that
+        # follows it is accepted and gets the ``project_`` prefix.
+        ("-1x", "project_1x"),
+    ],
+)
+def test_validate_app_name_accepts_and_normalizes(raw: str, expected: str) -> None:
+    assert validate_app_name(raw) == expected
+
+
+@pytest.mark.parametrize(
+    ("raw", "message"),
+    [
+        ("1blog", "must start with a letter"),
+        ("9", "must start with a letter"),
+        (" 2x", "must start with a letter"),
+        ("class", "Python keyword"),
+        ("core", "reserved"),
+        ("", "Cannot derive a valid project slug"),
+        ("é", "Cannot derive a valid project slug"),
+    ],
+)
+def test_validate_app_name_rejects_with_a_specific_message(
+    raw: str, message: str
+) -> None:
+    with pytest.raises(InvalidAppNameError, match=message):
+        validate_app_name(raw)
+
+
 def test_singularize_and_model_name() -> None:
     assert singularize("orders") == "order"
     assert singularize("categories") == "category"
