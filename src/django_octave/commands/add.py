@@ -14,6 +14,7 @@ from django_octave.project.detect import detect_project
 from django_octave.project.patch import patch_installed_apps, patch_urls
 from django_octave.rendering.app_context import AppContext
 from django_octave.rendering.app_writer import render_app
+from django_octave.rollback import rollback_on_error
 
 
 @app.command("add")
@@ -57,9 +58,11 @@ def add_app(
             force=options.force,
             model_name=options.model,
         )
-        render_app(ctx)
-        patch_installed_apps(ctx.settings_base, ctx.installed_app)
-        patch_urls(ctx.urls_path, ctx.app_name)
+        # All or nothing: a refused patch must not leave a half-added app behind.
+        with rollback_on_error(project.root):
+            render_app(ctx)
+            patch_installed_apps(ctx.settings_base, ctx.installed_app)
+            patch_urls(ctx.urls_path, ctx.app_name)
 
     console.print(
         Markdown(

@@ -47,10 +47,23 @@ Interactive runs prompt for frontend (on `new`), then registration and CRUD when
 
 - `frontend/` — Vite + Vue + Nuxt UI shell (login, authenticated home; optional register)
 - `apps/users/auth_api.py` — email JWT obtain + register view
-- `config/urls.py` — email token view; optional register route
+- `config/urls.py` — email token view, the `api/users/` route, optional register route (see below)
 - `.env.example` — CORS origins for Vite (`5173`) and prod SPA (`8080`)
 - If Compose exists: `frontend` service in `docker-compose.yml` (Vite) and `docker-compose.prod.yml` (nginx)
 - With `--crud`: pages under `frontend/src/pages/<plural>/` plus router/nav wiring (see [add-frontend-crud](add-frontend-crud.md))
+
+## What it changes in `config/urls.py`
+
+The file is edited by reading its structure, so reformatted lines, either quote style and parenthesized imports are fine:
+
+- the view of the `api/auth/token/` route becomes `EmailTokenObtainPairView.as_view()`; the route's `name=` and your formatting stay
+- the `api/users/` route (and, with `--register`, `api/auth/register/`) is added right after `api/auth/token/refresh/`, in the quote style of your file
+- the imports go in a block between two `# --- django-octave frontend imports ... ---` comments, only for names you do not already import
+- `TokenObtainPairView` is removed from the simplejwt import only when nothing else in the file uses it
+
+Routes you wired yourself are yours: an existing `api/users/` route is not duplicated or moved, and a register route that does not use `RegisterView.as_view()` is never duplicated or removed (also with `--no-register`). Running the command again changes nothing.
+
+If the file has no `api/auth/token/` or `api/auth/token/refresh/` route, `urlpatterns` is not a plain list, or the file does not parse, the command stops, says what it was looking for and what to do by hand, and writes nothing.
 
 ## App shell
 

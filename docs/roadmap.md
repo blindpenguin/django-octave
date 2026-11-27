@@ -30,6 +30,7 @@ Current package: **0.3.0**. Pick items and open a Spec Workflow spec before impl
 | Reverse names | `related_name=` option; distinct generated names when relations to one target would clash; admin `list_display` without m2m fields | `related-name-option` |
 | Stable `--force` | A replaced class keeps its place (permissions, serializers, viewsets, admin, models); created and regenerated files agree on blank lines | `stable-force-regeneration` |
 | Project marker | `.octave.toml` records the generator version and options; `add-*` commands refuse a project from a newer django-octave; feature flags kept in step by `add-celery` / `add-frontend` | `octave-marker` |
+| Config patching | `add` and `add-frontend` edit `urls.py` and `INSTALLED_APPS` with libcst, so formatted or edited files work and unsupported shapes are refused with the manual step; `add` is all-or-nothing | `libcst-config-patching` |
 
 ### Docs & release
 

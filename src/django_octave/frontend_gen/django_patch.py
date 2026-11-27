@@ -2,12 +2,32 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
+import libcst as cst
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from django_octave.errors import OctaveError
+from django_octave.project.cst_edit import (
+    ConfigEditError,
+    check_result,
+    dominant_quote,
+    find_import_from,
+    find_sequence,
+    imported_names,
+    insert_item_after,
+    insert_marked_block,
+    name_is_used,
+    parse_source,
+    remove_import_name,
+    remove_items,
+    remove_marked_block,
+    route_of,
+    sequence_of,
+    view_of,
+    with_sequence,
+    with_view,
+)
 from django_octave.project.detect import detect_project
 from django_octave.tenancy import ensure_tenancy_module
 
@@ -39,21 +59,51 @@ CORS_ALLOWED_ORIGINS={_DEFAULT_CORS_ORIGINS}
 """
 
 
-def register_endpoint_present(root: Path) -> bool:
-    """True if a register URL is already wired in ``config/urls.py``."""
+class _Routes(cst.CSTVisitor):
+    """Every ``path("route", view, ...)`` call in a file: ``(route, view source)``."""
+
+    def __init__(self) -> None:
+        self.found: list[tuple[str, str | None]] = []
+
+    def visit_Call(self, node: cst.Call) -> bool:
+        route = route_of(node)
+        if route is not None:
+            view = view_of(node)
+            self.found.append((route, _code(view) if view is not None else None))
+        return True
+
+
+def _code(node: cst.CSTNode) -> str:
+    return cst.Module([]).code_for_node(node).strip()
+
+
+def _routes_of(module: cst.Module) -> list[tuple[str, str | None]]:
+    visitor = _Routes()
+    module.visit(visitor)
+    return visitor.found
+
+
+def _routes_in(root: Path) -> list[tuple[str, str | None]]:
+    """The routes wired in ``config/urls.py``; nothing if it is missing or does not parse."""
     urls = root / "config" / "urls.py"
     if not urls.is_file():
-        return False
-    text = urls.read_text(encoding="utf-8")
-    return "api/auth/register" in text
+        return []
+    try:
+        return _routes_of(parse_source(urls.read_text(encoding="utf-8"), urls))
+    except ConfigEditError:
+        return []
+
+
+def register_endpoint_present(root: Path) -> bool:
+    """True if a register URL is already wired in ``config/urls.py``."""
+    return any(
+        route.startswith("api/auth/register") for route, _view in _routes_in(root)
+    )
 
 
 def users_list_endpoint_present(root: Path) -> bool:
     """True if ``api/users/`` is wired for FK selects."""
-    urls = root / "config" / "urls.py"
-    if not urls.is_file():
-        return False
-    return "api/users/" in urls.read_text(encoding="utf-8")
+    return any(route.startswith("api/users/") for route, _view in _routes_in(root))
 
 
 def _merge_cors_line(existing: str) -> str:
@@ -156,104 +206,152 @@ def write_auth_api(root: Path, *, force: bool = False) -> Path:
     return path
 
 
-def _import_block(*, include_register: bool) -> str:
-    lines = [
-        _URLS_IMPORT_BEGIN,
-        "from apps.users.auth_api import EmailTokenObtainPairView, UserListView",
-    ]
-    if include_register:
-        lines.append("from apps.users.auth_api import RegisterView")
-    lines.append(_URLS_IMPORT_END)
-    return "\n".join(lines) + "\n"
+_AUTH_API = "apps.users.auth_api"
+_SIMPLEJWT_VIEWS = "rest_framework_simplejwt.views"
+_REGISTER_VIEW = "RegisterView.as_view()"
+_USERS_VIEW = "UserListView.as_view()"
+_TOKEN_VIEW = "EmailTokenObtainPairView.as_view()"
+
+
+def _is_managed_register(route: str, view: str | None) -> bool:
+    return route == "api/auth/register/" and view == _REGISTER_VIEW
+
+
+def _route_call(quote: str, route: str, view: str, name: str) -> cst.BaseExpression:
+    # Fixed text only: the route, view and name are constants of this module.
+    return cst.parse_expression(
+        f"path({quote}{route}{quote}, {view}, name={quote}{name}{quote})"
+    )
+
+
+def _indexes(sequence: cst.List | cst.Tuple, matches) -> list[int]:
+    return [i for i, el in enumerate(sequence.elements) if matches(el.value)]
+
+
+def _patched_urls(source: str, path: Path, *, include_register: bool) -> str:
+    module = parse_source(source, path)
+    routes = _routes_of(module)
+
+    # A register route the user wired by hand (anything but the managed shape) is theirs:
+    # it is never duplicated and never removed. Decided from the routes themselves, so the
+    # answer does not change after the first run adds the managed import block.
+    hand_register = any(
+        route.startswith("api/auth/register") and not _is_managed_register(route, view)
+        for route, view in routes
+    )
+    wire_register = include_register and not hand_register
+
+    module = remove_marked_block(module, _URLS_IMPORT_BEGIN, _URLS_IMPORT_END)
+
+    ref = find_sequence(module, "urlpatterns")
+    if ref is None:
+        msg = (
+            f"urlpatterns in {path} is not a plain list that django-octave can edit, so "
+            f"add-frontend cannot wire the email token view ({_TOKEN_VIEW} on "
+            '"api/auth/token/") and the "api/users/" route. Wire them yourself.'
+        )
+        raise ConfigEditError(msg)
+    sequence = sequence_of(module, ref)
+    quote = dominant_quote(sequence)
+
+    # The obtain route gets the email view; its name and formatting stay as they are.
+    token = _indexes(sequence, lambda v: route_of(v) == "api/auth/token/")
+    if not token:
+        msg = (
+            f'Could not find the "api/auth/token/" route in urlpatterns of {path}; '
+            f"add-frontend replaces its view with {_TOKEN_VIEW}."
+        )
+        raise ConfigEditError(msg)
+    elements = list(sequence.elements)
+    for i in token:
+        call = elements[i].value
+        assert isinstance(call, cst.Call)
+        elements[i] = elements[i].with_changes(
+            value=with_view(call, cst.parse_expression(_TOKEN_VIEW))
+        )
+    sequence = sequence.with_changes(elements=elements)
+
+    if not include_register:
+        sequence = remove_items(
+            sequence,
+            lambda v: _is_managed_register(
+                route_of(v) or "", _code(view_of(v)) if view_of(v) is not None else None
+            ),
+        )
+
+    refresh = _indexes(sequence, lambda v: route_of(v) == "api/auth/token/refresh/")
+    if not refresh:
+        msg = (
+            f'Could not find the "api/auth/token/refresh/" route in urlpatterns of {path}; '
+            'add-frontend adds the "api/users/" route'
+            + (' and the "api/auth/register/" route' if wire_register else "")
+            + " right after it."
+        )
+        raise ConfigEditError(msg)
+
+    # Existing routes stay where they are; missing ones go right after the refresh route.
+    present = {r for r, _v in _routes_of(module)}
+    after = refresh[0]
+    if wire_register and not any(r.startswith("api/auth/register") for r in present):
+        route = _route_call(
+            quote, "api/auth/register/", _REGISTER_VIEW, "auth_register"
+        )
+        sequence = insert_item_after(sequence, after, route)
+        after += 1
+    if not any(r.startswith("api/users/") for r in present):
+        route = _route_call(quote, "api/users/", _USERS_VIEW, "user_list")
+        sequence = insert_item_after(sequence, after, route)
+    module = with_sequence(module, ref, sequence)
+
+    # simplejwt: the stock obtain view is no longer used by the file.
+    if not name_is_used(module, "TokenObtainPairView"):
+        module = remove_import_name(module, _SIMPLEJWT_VIEWS, "TokenObtainPairView")
+
+    # The managed import block: only the names that are not imported yet.
+    have = imported_names(module, _AUTH_API)
+    lines = []
+    group = [n for n in ("EmailTokenObtainPairView", "UserListView") if n not in have]
+    if group:
+        lines.append(f"from {_AUTH_API} import {', '.join(group)}")
+    if wire_register and "RegisterView" not in have:
+        lines.append(f"from {_AUTH_API} import RegisterView")
+    if lines:
+        anchor = find_import_from(module, "apps.core.throttling")
+        if anchor is None:
+            anchor = find_import_from(module, _SIMPLEJWT_VIEWS)
+        if anchor is None:
+            msg = (
+                f"Could not find the simplejwt TokenRefreshView import in {path}; add "
+                "these lines to the imports yourself: " + "; ".join(lines)
+            )
+            raise ConfigEditError(msg)
+        module = insert_marked_block(
+            module,
+            after_index=anchor,
+            begin=_URLS_IMPORT_BEGIN,
+            end=_URLS_IMPORT_END,
+            statements=lines,
+        )
+    return check_result(module.code, path)
 
 
 def patch_urls(root: Path, *, include_register: bool) -> Path:
-    """Wire email JWT obtain, user list, and optional register into ``config/urls.py``."""
+    """Wire email JWT obtain, user list, and optional register into ``config/urls.py``.
+
+    Edits the syntax tree, so wrapped lines, either quote style and parenthesized imports
+    are fine. A file that cannot be understood raises :class:`DjangoPatchError` saying what
+    to do by hand, and is left untouched.
+    """
     urls_path = root / "config" / "urls.py"
     if not urls_path.is_file():
         raise DjangoPatchError(f"Missing {urls_path}")
-
-    text = urls_path.read_text(encoding="utf-8")
-    skip_register = (
-        include_register
-        and register_endpoint_present(root)
-        and (_URLS_IMPORT_BEGIN not in text)
-    )
-    wire_register = include_register and not skip_register
-
-    # Strip previous frontend import marker block
-    if _URLS_IMPORT_BEGIN in text:
-        start = text.index(_URLS_IMPORT_BEGIN)
-        end = text.index(_URLS_IMPORT_END) + len(_URLS_IMPORT_END)
-        if end < len(text) and text[end] == "\n":
-            end += 1
-        text = text[:start] + text[end:]
-
-    # Normalize simplejwt import: keep TokenRefreshView only
-    text = re.sub(
-        r"from rest_framework_simplejwt\.views import [^\n]+\n",
-        "from rest_framework_simplejwt.views import TokenRefreshView\n",
-        text,
-        count=1,
-    )
-
-    # Insert frontend imports after the throttle import (first-party, sorts before
-    # apps.users) when present, else after the simplejwt import.
-    refresh_import = "from rest_framework_simplejwt.views import TokenRefreshView\n"
-    throttle_import = "from apps.core.throttling import throttled\n"
-    if refresh_import not in text:
-        raise DjangoPatchError("Could not find simplejwt TokenRefreshView import")
-    anchor = throttle_import if throttle_import in text else refresh_import
-    insert_at = text.index(anchor) + len(anchor)
-    text = (
-        text[:insert_at]
-        + _import_block(include_register=wire_register)
-        + text[insert_at:]
-    )
-
-    # Replace the obtain view (stock, throttled or already patched) with the email one.
-    text, replaced = re.subn(
-        r'path\(\s*"api/auth/token/"\s*,\s*[^,]+,\s*name\s*=\s*"token_obtain_pair"\s*\)',
-        'path("api/auth/token/", EmailTokenObtainPairView.as_view(), '
-        'name="token_obtain_pair")',
-        text,
-    )
-    if not replaced:
-        raise DjangoPatchError("Could not find api/auth/token/ path")
-
-    # Remove managed register / users list paths, then re-add
-    text = re.sub(
-        r'\n?\s*path\(\s*"api/auth/register/"\s*,\s*RegisterView\.as_view\(\)\s*,'
-        r'\s*name\s*=\s*"auth_register"\s*\),?',
-        "",
-        text,
-    )
-    text = re.sub(
-        r'\n?\s*path\(\s*"api/users/"\s*,\s*UserListView\.as_view\(\)\s*,'
-        r'\s*name\s*=\s*"user_list"\s*\),?',
-        "",
-        text,
-    )
-
-    match = re.search(
-        r'path\(\s*"api/auth/token/refresh/"\s*,[^\n]+\n',
-        text,
-    )
-    if not match:
-        raise DjangoPatchError("Could not find token refresh path")
-    insert_parts: list[str] = []
-    if wire_register:
-        insert_parts.append(
-            '    path("api/auth/register/", RegisterView.as_view(), '
-            'name="auth_register"),\n'
-        )
-    insert_parts.append(
-        '    path("api/users/", UserListView.as_view(), name="user_list"),\n'
-    )
-    end = match.end()
-    text = text[:end] + "".join(insert_parts) + text[end:]
-
-    urls_path.write_text(text, encoding="utf-8")
+    source = urls_path.read_text(encoding="utf-8")
+    try:
+        patched = _patched_urls(source, urls_path, include_register=include_register)
+    except ConfigEditError as exc:
+        raise DjangoPatchError(str(exc)) from exc
+    if patched != source:
+        urls_path.write_text(patched, encoding="utf-8")
     return urls_path
 
 
