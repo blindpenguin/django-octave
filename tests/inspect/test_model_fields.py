@@ -118,3 +118,31 @@ def test_inspect_relations() -> None:
     assert info.relations["tags"].kind == "m2m"
     assert "author" in filterable_names(info)
     assert "tags" not in filterable_names(info)
+
+
+SAMPLE_RELATED_NAMES = '''
+from django.db import models
+from apps.core.models import TimeStampedModel
+
+class Note(TimeStampedModel):
+    title = models.CharField(max_length=100)
+    owner = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="note_owner")
+    assignee = models.ForeignKey(
+        "users.User", on_delete=models.SET_NULL, related_name="+", null=True, blank=True
+    )
+    watchers = models.ManyToManyField("users.User", related_name="watched_notes", blank=True)
+'''
+
+
+def test_inspect_ignores_related_name_and_keeps_relations_and_flags() -> None:
+    info = inspect_model_fields(SAMPLE_RELATED_NAMES, "Note")
+
+    assert info.fields["owner"] == "ForeignKey"
+    assert info.relations["owner"].kind == "fk"
+    assert info.relations["owner"].to == "users.User"
+    assert info.relations["assignee"].kind == "fk"
+    assert "assignee" in info.null_fields
+    assert "assignee" in info.blank_fields
+    assert info.relations["watchers"].kind == "m2m"
+    assert "watchers" in info.blank_fields
+    assert filterable_names(info) == ["title", "owner", "assignee"]

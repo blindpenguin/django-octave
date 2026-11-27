@@ -213,3 +213,146 @@ def test_parse_unknown_option_without_default_has_no_colon_hint() -> None:
 def test_parse_non_integer_option_is_a_parse_error(option: str) -> None:
     with pytest.raises(FieldParseError, match="expected an integer"):
         parse_field(f"title:char:{option}")
+
+
+# --- related_name= option -------------------------------------------------------------
+
+
+@pytest.mark.parametrize("type_key", ["fk", "o2o", "m2m"])
+@pytest.mark.parametrize("value", ["owned_notes", "_hidden", "a1", "x" * 64])
+def test_parse_related_name_identifier_on_relation_types(type_key: str, value: str) -> None:
+    spec = parse_field(f"owner:{type_key}:to=users.User:related_name={value}")
+
+    assert spec.related_name == value
+
+
+@pytest.mark.parametrize("type_key", ["fk", "o2o", "m2m"])
+def test_parse_related_name_plus_hides_the_reverse_relation(type_key: str) -> None:
+    spec = parse_field(f"owner:{type_key}:to=users.User:related_name=+")
+
+    assert spec.related_name == "+"
+
+
+@pytest.mark.parametrize("declaration", ["owner:fk:to=users.User", "tags:m2m:to=Tag"])
+def test_parse_related_name_defaults_to_none(declaration: str) -> None:
+    assert parse_field(declaration).related_name is None
+
+
+@pytest.mark.parametrize(
+    "declaration",
+    [
+        "title:char:related_name=x",
+        "n:int:related_name=x",
+        "d:date:related_name=x",
+        "u:uuid:related_name=x",
+        "t:text:related_name=+",
+    ],
+)
+def test_parse_related_name_rejected_on_non_relation_types(declaration: str) -> None:
+    with pytest.raises(FieldParseError, match=r"related_name= is only valid for fk/o2o/m2m"):
+        parse_field(declaration)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "",
+        "class",
+        "None",
+        "a-b",
+        "a b",
+        "1abc",
+        "x_",
+        "a__b",
+        "%(class)s_x",
+        "x%",
+        "naïve",
+        "x" * 65,
+        "++",
+        "x+",
+        'x", y="z',
+        "x'); import os; ('",
+    ],
+)
+def test_parse_related_name_invalid_value_is_rejected(value: str) -> None:
+    with pytest.raises(FieldParseError, match="Invalid related_name"):
+        parse_field(f"owner:fk:to=users.User:related_name={value}")
+
+
+def test_parse_related_name_without_a_value_is_rejected() -> None:
+    # A bare option would otherwise be read as the flag value "true".
+    with pytest.raises(FieldParseError, match="related_name requires a value"):
+        parse_field("owner:fk:to=users.User:related_name")
+
+
+def test_parse_related_name_error_states_the_rule_and_the_field() -> None:
+    with pytest.raises(FieldParseError, match=r"owner.*identifier") as raised:
+        parse_field("owner:fk:to=users.User:related_name=a-b")
+
+    assert "'a-b'" in str(raised.value)
+
+
+def test_parse_related_name_survives_compact_field_splitting() -> None:
+    parts = split_compact_fields(
+        "owner:fk:to=users.User:related_name=owned_notes,assignee:fk:to=users.User"
+    )
+
+    assert parts == [
+        "owner:fk:to=users.User:related_name=owned_notes",
+        "assignee:fk:to=users.User",
+    ]
+
+
+def test_parse_fields_duplicate_explicit_related_name_names_both_fields() -> None:
+    with pytest.raises(FieldParseError) as raised:
+        parse_fields(
+            [
+                "owner:fk:to=users.User:related_name=notes",
+                "assignee:fk:to=users.User:related_name=notes",
+            ]
+        )
+
+    message = str(raised.value)
+    assert "'notes'" in message
+    assert "'owner'" in message
+    assert "'assignee'" in message
+
+
+def test_parse_fields_plus_may_be_used_more_than_once() -> None:
+    specs = parse_fields(
+        [
+            "owner:fk:to=users.User:related_name=+",
+            "assignee:fk:to=users.User:related_name=+",
+        ]
+    )
+
+    assert [s.related_name for s in specs] == ["+", "+"]
+
+
+def test_parse_fields_distinct_explicit_related_names_are_accepted() -> None:
+    specs = parse_fields(
+        [
+            "owner:fk:to=users.User:related_name=owned",
+            "assignee:fk:to=users.User:related_name=assigned",
+        ]
+    )
+
+    assert [s.related_name for s in specs] == ["owned", "assigned"]
+
+
+@pytest.mark.parametrize(
+    "declaration",
+    [
+        "title:char:max=80:blank",
+        "n:int:default=3",
+        "owner:fk:to=users.User:on_delete=set_null",
+        "tags:m2m:to=Tag",
+        "ref:uuid:default=uuid4",
+    ],
+)
+def test_parse_existing_declarations_are_unchanged_by_the_new_option(
+    declaration: str,
+) -> None:
+    spec = parse_field(declaration)
+
+    assert spec.related_name is None

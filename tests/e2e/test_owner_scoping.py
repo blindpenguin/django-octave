@@ -6,7 +6,6 @@ and runs the scenarios in `owner_scenarios.py.tmpl` against real Django and DRF.
 
 from __future__ import annotations
 
-import re
 import shutil
 from pathlib import Path
 
@@ -22,13 +21,6 @@ FIELDS = "title:char,owner:fk:to=users.User,assignee:fk:to=users.User:on_delete=
 
 def _configure(root: Path) -> None:
     cli("add-model", "notes", "Note", "--fields", FIELDS, "--force", "--path", str(root))
-    # The field syntax has no related_name option, and two foreign keys to the same model
-    # clash on their reverse accessor (fields.E304), so the second one is fixed by hand.
-    models = root / "apps" / "notes" / "models.py"
-    text = models.read_text(encoding="utf-8")
-    patched = re.sub(r'(assignee = models\.ForeignKey\(\s*"[^"]+",)', r'\1 related_name="+",', text)
-    assert patched != text
-    models.write_text(patched, encoding="utf-8")
     cli(
         "add-permission", "notes", "IsOwner", "--preset", "owner", "--owner-attr", "owner",
         "--viewset", "Note", "--path", str(root),

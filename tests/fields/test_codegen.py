@@ -130,3 +130,78 @@ def test_max_length_is_not_emitted_for_other_types() -> None:
     spec = FieldSpec(name="f", type_key="text", max_length=40)
 
     assert "max_length" not in field_source(spec)
+
+
+# --- related_name emission ------------------------------------------------------------
+
+
+def _call_keywords(source: str) -> dict[str, ast.expr]:
+    call = ast.parse(source).body[0].value  # type: ignore[attr-defined]
+    return {kw.arg: kw.value for kw in call.keywords if kw.arg}
+
+
+@pytest.mark.parametrize(
+    ("declaration", "expected"),
+    [
+        (
+            "owner:fk:to=users.User:related_name=owned_notes",
+            'owner = models.ForeignKey("users.User", on_delete=models.CASCADE, '
+            'related_name="owned_notes")',
+        ),
+        (
+            "owner:fk:to=users.User:on_delete=set_null:related_name=+",
+            'owner = models.ForeignKey("users.User", on_delete=models.SET_NULL, '
+            'related_name="+", null=True, blank=True)',
+        ),
+        (
+            "profile:o2o:to=users.User:related_name=note_profile",
+            'profile = models.OneToOneField("users.User", on_delete=models.CASCADE, '
+            'related_name="note_profile")',
+        ),
+        (
+            "tags:m2m:to=Tag:related_name=tagged_notes",
+            'tags = models.ManyToManyField("Tag", related_name="tagged_notes", blank=True)',
+        ),
+    ],
+)
+def test_related_name_is_emitted_after_on_delete_as_a_quoted_literal(
+    declaration: str, expected: str
+) -> None:
+    source = field_source(parse_field(declaration))
+
+    assert source == expected
+
+
+@pytest.mark.parametrize("value", ["owned_notes", "+", "_x", "a1"])
+def test_related_name_line_parses_and_carries_exactly_the_value(value: str) -> None:
+    source = field_source(parse_field(f"owner:fk:to=users.User:related_name={value}"))
+
+    node = _call_keywords(source)["related_name"]
+
+    assert isinstance(node, ast.Constant)
+    assert node.value == value
+
+
+@pytest.mark.parametrize(
+    ("declaration", "expected"),
+    [
+        (
+            "owner:fk:to=users.User",
+            'owner = models.ForeignKey("users.User", on_delete=models.CASCADE)',
+        ),
+        ("tags:m2m:to=Tag", 'tags = models.ManyToManyField("Tag", blank=True)'),
+        (
+            "profile:o2o:to=users.User:unique",
+            'profile = models.OneToOneField("users.User", on_delete=models.CASCADE, '
+            "unique=True)",
+        ),
+    ],
+)
+def test_relation_without_related_name_is_unchanged(declaration: str, expected: str) -> None:
+    assert field_source(parse_field(declaration)) == expected
+
+
+def test_related_name_is_never_emitted_for_scalar_fields() -> None:
+    spec = FieldSpec(name="title", type_key="char", max_length=20)
+
+    assert "related_name" not in field_source(spec)

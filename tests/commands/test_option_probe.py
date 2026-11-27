@@ -180,3 +180,27 @@ def test_free_text_option_cannot_inject_code(
     assert not failures, f"{command} {option}:\n  " + "\n  ".join(failures)
     assert _snapshot(project) == baseline
     shutil.rmtree(project / ".pytest_cache", ignore_errors=True)
+
+
+@pytest.mark.parametrize("option", ["--field", "--fields"])
+def test_related_name_value_cannot_inject_code(project: Path, option: str) -> None:
+    """The payload sits in the ``related_name=`` position, where it would be quoted."""
+    baseline = _snapshot(project)
+    failures: list[str] = []
+
+    for payload in PAYLOADS:
+        spec = f"owner:fk:to=users.User:related_name={payload}"
+        args = ["add-model", "blog", "Post", option, spec, "--path", str(project), "--force"]
+        result = runner.invoke(app, args)
+        label = f"payload {payload!r}"
+
+        if "Traceback" in result.output:
+            failures.append(f"{label}: traceback in output")
+        if result.exit_code == 0:
+            failures.append(f"{label}: accepted as a related_name")
+        if _snapshot(project) != baseline:
+            failures.append(f"{label}: the project tree changed")
+        _restore(project, baseline)
+
+    assert not failures, f"add-model {option}:\n  " + "\n  ".join(failures)
+    shutil.rmtree(project / ".pytest_cache", ignore_errors=True)

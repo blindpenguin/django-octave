@@ -62,6 +62,11 @@ _RELATED_TO_RE = re.compile(r"^([A-Z][A-Za-z0-9_]*)(\.[A-Z][A-Za-z0-9_]*)?$")
 _RELATED_TO_APP_RE = re.compile(
     r"^([a-z][a-z0-9_]*)\.([A-Z][A-Za-z0-9_]*)$"
 )
+_RELATED_NAME_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}")
+_RELATED_NAME_RULE = (
+    "use '+' (no reverse relation) or an identifier of up to 64 ASCII letters, digits "
+    "or '_' that is not a Python keyword, does not end with '_' and has no '__'"
+)
 _TRUE = frozenset({"1", "true", "yes", "on"})
 _FALSE = frozenset({"0", "false", "no", "off"})
 
@@ -86,6 +91,9 @@ class FieldSpec:
 
     on_delete: str | None = None
     """Normalized on_delete token for fk/o2o (e.g. ``cascade``)."""
+
+    related_name: str | None = None
+    """Validated reverse name for a relation, ``"+"`` for none, or ``None`` if unset."""
 
 
 def _parse_bool(raw: str) -> bool:
@@ -159,6 +167,26 @@ def _validate_related_to(raw: str) -> str:
     raise FieldParseError(msg)
 
 
+def _validate_related_name(field_name: str, raw: str) -> str:
+    """Allow ``+`` or a safe identifier; the value is later written as a quoted literal.
+
+    Django rejects reverse query names that end with ``_`` or contain ``__``
+    (``fields.E308``, ``fields.E309``), so they are refused here too.
+    """
+    value = raw.strip()
+    if value == "+":
+        return value
+    if (
+        _RELATED_NAME_RE.fullmatch(value) is None
+        or keyword.iskeyword(value)
+        or value.endswith("_")
+        or "__" in value
+    ):
+        msg = f"Invalid related_name={value!r} for field {field_name!r}; {_RELATED_NAME_RULE}"
+        raise FieldParseError(msg)
+    return value
+
+
 def parse_field(raw: str) -> FieldSpec:
     """Parse a single ``name:type[:k=v...]`` declaration."""
     parts = [p.strip() for p in raw.split(":")]
@@ -192,13 +220,15 @@ def parse_field(raw: str) -> FieldSpec:
     max_digits: int | None = 10 if type_key == "decimal" else None
     decimal_places: int | None = 2 if type_key == "decimal" else None
     related_to: str | None = None
+    related_name: str | None = None
     on_delete: str | None = "cascade" if type_key in {"fk", "o2o"} else None
 
     after_default = False
     for opt in option_parts:
         if not opt:
             continue
-        if "=" in opt:
+        has_value = "=" in opt
+        if has_value:
             key, value = opt.split("=", 1)
             key = key.strip().lower()
             value = value.strip()
@@ -228,6 +258,14 @@ def parse_field(raw: str) -> FieldSpec:
                 msg = f"Option to= is only valid for fk/o2o/m2m (got {type_key})"
                 raise FieldParseError(msg)
             related_to = _validate_related_to(value)
+        elif key == "related_name":
+            if type_key not in RELATION_TYPES:
+                msg = f"Option related_name= is only valid for fk/o2o/m2m (got {type_key})"
+                raise FieldParseError(msg)
+            if not has_value:
+                msg = f"Option related_name requires a value (field {name!r}): related_name=<name>"
+                raise FieldParseError(msg)
+            related_name = _validate_related_name(name, value)
         elif key == "on_delete":
             if type_key not in {"fk", "o2o"}:
                 msg = f"Option on_delete= is only valid for fk/o2o (got {type_key})"
@@ -274,6 +312,7 @@ def parse_field(raw: str) -> FieldSpec:
         decimal_places=decimal_places,
         related_to=related_to,
         on_delete=on_delete,
+        related_name=related_name,
     )
 
 
@@ -297,4 +336,19 @@ def parse_fields(raw_fields: list[str] | None) -> list[FieldSpec]:
     """Parse fields; default to ``name:char:max=255`` when empty."""
     if not raw_fields:
         return [parse_field("name:char:max=255")]
-    return [parse_field(item) for item in raw_fields]
+    specs = [parse_field(item) for item in raw_fields]
+    _reject_duplicate_related_names(specs)
+    return specs
+
+
+def _reject_duplicate_related_names(specs: list[FieldSpec]) -> None:
+    """Two fields cannot share one explicit reverse name (``+`` may repeat)."""
+    seen: dict[str, str] = {}
+    for spec in specs:
+        name = spec.related_name
+        if name is None or name == "+":
+            continue
+        if name in seen:
+            msg = f"related_name {name!r} is used by both {seen[name]!r} and {spec.name!r}"
+            raise FieldParseError(msg)
+        seen[name] = spec.name

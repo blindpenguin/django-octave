@@ -70,6 +70,9 @@ def field_source(spec: FieldSpec) -> str:
         if spec.type_key in {"fk", "o2o"}:
             assert spec.on_delete is not None
             args.append(f"on_delete={_ON_DELETE_MAP[spec.on_delete]}")
+        if spec.related_name is not None:
+            # Validated by the parser (or built from validated names): safe in quotes.
+            args.append(f'related_name="{spec.related_name}"')
         if spec.null:
             args.append("null=True")
         if spec.blank:

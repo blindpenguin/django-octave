@@ -11,10 +11,28 @@ from rich.markdown import Markdown
 from django_octave.cli import app
 from django_octave.commands._common import console, handle_errors
 from django_octave.fields.parser import parse_fields, split_compact_fields
+from django_octave.fields.related import resolve_related_names
 from django_octave.models_gen.api_sync import sync_api_stubs
 from django_octave.models_gen.writer import write_model
 from django_octave.naming import validate_app_name, validate_model_name
 from django_octave.project.detect import detect_project
+
+
+def related_name_notes(generated: dict[str, str]) -> list[str]:
+    """Summary lines that tell the user which reverse names were generated."""
+    if not generated:
+        return []
+    return [
+        "## related_name",
+        "",
+        "Several relations point at the same model, so each got its own reverse name:",
+        "",
+        *[f"- `{field}` → `{name}`" for field, name in generated.items()],
+        "",
+        "Set `related_name=` on a field to choose another name "
+        "(`+` turns the reverse relation off).",
+        "",
+    ]
 
 
 @app.command("add-model")
@@ -74,6 +92,7 @@ def add_model_cmd(
         app = validate_app_name(options.app)
         model = validate_model_name(options.model)
         fields = parse_fields(options.fields)
+        resolved = resolve_related_names(fields, app=app, model=model)
         app_dir = project.apps_dir / app
         if not app_dir.is_dir():
             raise FileNotFoundError(
@@ -83,7 +102,7 @@ def add_model_cmd(
         write_model(
             models_path,
             model_name=model,
-            fields=fields,
+            fields=resolved.fields,
             use_multitenancy=project.use_multitenancy,
             force=options.force,
         )
@@ -91,7 +110,7 @@ def add_model_cmd(
             app_dir,
             app_name=app,
             model_name=model,
-            fields=fields,
+            fields=resolved.fields,
             force=options.force,
             use_multitenancy=project.use_multitenancy,
         )
@@ -105,6 +124,7 @@ def add_model_cmd(
                     f"- Fields: {', '.join(f.name for f in fields)}",
                     "- Serializer / admin / viewset / router updated",
                     "",
+                    *related_name_notes(resolved.generated),
                     "## Next steps",
                     "",
                     "```bash",
