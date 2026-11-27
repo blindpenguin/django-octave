@@ -59,7 +59,8 @@ def _read_only(root: Path) -> tuple[str, ...]:
         if isinstance(node, ast.ClassDef) and node.name == "NoteSerializer":
             for item in ast.walk(node):
                 if isinstance(item, ast.Assign) and any(
-                    isinstance(t, ast.Name) and t.id == "read_only_fields" for t in item.targets
+                    isinstance(t, ast.Name) and t.id == "read_only_fields"
+                    for t in item.targets
                 ):
                     return tuple(ast.literal_eval(item.value))
     return ()
@@ -88,7 +89,9 @@ def _owner_permission(root: Path, *extra: str) -> object:
     )  # fmt: skip
 
 
-def test_add_permission_with_viewset_scopes_the_viewset_and_the_serializer(project: Path) -> None:
+def test_add_permission_with_viewset_scopes_the_viewset_and_the_serializer(
+    project: Path,
+) -> None:
     result = _owner_permission(project, "--viewset", "Note")
 
     assert result.exit_code == 0, result.output
@@ -134,7 +137,14 @@ def test_add_viewset_with_a_generated_owner_permission_scopes_the_new_viewset(
     assert _owner_permission(project).exit_code == 0
 
     result = _invoke(
-        "add-viewset", "blog", "Note", "--permission", "IsOwner", "--force", "--path", str(project)
+        "add-viewset",
+        "blog",
+        "Note",
+        "--permission",
+        "IsOwner",
+        "--force",
+        "--path",
+        str(project),
     )
 
     assert result.exit_code == 0, result.output
@@ -151,9 +161,19 @@ def test_both_paths_produce_the_same_files(tmp_path: Path) -> None:
     assert _owner_permission(first, "--viewset", "Note").exit_code == 0
     second = _project(tmp_path / "b")
     assert _owner_permission(second).exit_code == 0
-    assert _invoke(
-        "add-viewset", "blog", "Note", "--permission", "IsOwner", "--force", "--path", str(second)
-    ).exit_code == 0
+    assert (
+        _invoke(
+            "add-viewset",
+            "blog",
+            "Note",
+            "--permission",
+            "IsOwner",
+            "--force",
+            "--path",
+            str(second),
+        ).exit_code
+        == 0
+    )
 
     # (the two viewsets differ in unrelated stub details; the scoping must be identical)
     assert _scoping_lines(first) == _scoping_lines(second)
@@ -176,7 +196,9 @@ def test_wiring_twice_changes_nothing_the_second_time(project: Path) -> None:
     assert later["apps/blog/permissions.py"].replace(b"\n\n\n", b"\n\n") == first[
         "apps/blog/permissions.py"
     ].replace(b"\n\n\n", b"\n\n")
-    assert _views(project).count("OwnerScopedMixin") == 2  # import + base, never duplicated
+    assert (
+        _views(project).count("OwnerScopedMixin") == 2
+    )  # import + base, never duplicated
     assert _read_only(project).count("owner") == 1
     assert "already scoped" in _flat(result.output)
 
@@ -191,7 +213,14 @@ def test_a_permission_without_owner_attr_is_never_guessed(project: Path) -> None
     )
 
     result = _invoke(
-        "add-viewset", "blog", "Note", "--permission", "IsHandmade", "--force", "--path", str(project)
+        "add-viewset",
+        "blog",
+        "Note",
+        "--permission",
+        "IsHandmade",
+        "--force",
+        "--path",
+        str(project),
     )
 
     assert result.exit_code == 0, result.output
@@ -201,7 +230,14 @@ def test_a_permission_without_owner_attr_is_never_guessed(project: Path) -> None
 
 def test_stock_permissions_generate_exactly_what_they_did_before(project: Path) -> None:
     result = _invoke(
-        "add-viewset", "blog", "Note", "--permission", "IsAdminUser", "--force", "--path", str(project)
+        "add-viewset",
+        "blog",
+        "Note",
+        "--permission",
+        "IsAdminUser",
+        "--force",
+        "--path",
+        str(project),
     )
 
     assert result.exit_code == 0, result.output
@@ -217,7 +253,16 @@ def test_a_project_without_ownership_module_is_refused_and_left_untouched(
     (project / "apps" / "core" / "ownership.py").unlink()
     before = _tree(project)
     args = (
-        ["add-permission", "blog", "IsOwner", "--preset", "owner", "--viewset", "Note", "--force"]
+        [
+            "add-permission",
+            "blog",
+            "IsOwner",
+            "--preset",
+            "owner",
+            "--viewset",
+            "Note",
+            "--force",
+        ]
         if command == "permission"
         else ["add-viewset", "blog", "Note", "--permission", "IsOwner", "--force"]
     )
@@ -230,12 +275,17 @@ def test_a_project_without_ownership_module_is_refused_and_left_untouched(
     assert _tree(project) == before
 
 
-def test_a_tenant_project_puts_the_owner_mixin_before_the_tenant_mixin(tmp_path: Path) -> None:
+def test_a_tenant_project_puts_the_owner_mixin_before_the_tenant_mixin(
+    tmp_path: Path,
+) -> None:
     root = _project(tmp_path, multitenancy=True)
-    assert _invoke(
-        "add-viewset", "blog", "Note", "--force", "--path", str(root)
-    ).exit_code == 0
-    assert "class NoteViewSet(TenantScopedMixin, viewsets.ModelViewSet):" in _views(root)
+    assert (
+        _invoke("add-viewset", "blog", "Note", "--force", "--path", str(root)).exit_code
+        == 0
+    )
+    assert "class NoteViewSet(TenantScopedMixin, viewsets.ModelViewSet):" in _views(
+        root
+    )
 
     result = _owner_permission(root, "--viewset", "Note")
 
@@ -253,7 +303,14 @@ def test_a_tenant_project_scopes_a_freshly_created_viewset_in_the_right_order(
     assert _owner_permission(root).exit_code == 0
 
     result = _invoke(
-        "add-viewset", "blog", "Note", "--permission", "IsOwner", "--force", "--path", str(root)
+        "add-viewset",
+        "blog",
+        "Note",
+        "--permission",
+        "IsOwner",
+        "--force",
+        "--path",
+        str(root),
     )
 
     assert result.exit_code == 0, result.output
@@ -263,7 +320,9 @@ def test_a_tenant_project_scopes_a_freshly_created_viewset_in_the_right_order(
     )
 
 
-def test_the_owner_attribute_not_among_the_serializer_fields_is_reported(project: Path) -> None:
+def test_the_owner_attribute_not_among_the_serializer_fields_is_reported(
+    project: Path,
+) -> None:
     result = _invoke(
         "add-permission", "blog", "IsOwner", "--preset", "owner", "--owner-attr", "created_by",
         "--viewset", "Note", "--path", str(project),

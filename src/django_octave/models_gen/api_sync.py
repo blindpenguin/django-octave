@@ -40,8 +40,15 @@ def _admin_class(model_name: str, fields: list[FieldSpec]) -> str:
         "updated_at",
     ]
     display = ", ".join(f'"{n}"' for n in display_names)
-    search_fields = [f.name for f in fields if f.type_key in {"char", "slug", "email", "text"}]
-    search = "(" + ", ".join(f'"{n}"' for n in search_fields) + ("," if search_fields else "") + ")"
+    search_fields = [
+        f.name for f in fields if f.type_key in {"char", "slug", "email", "text"}
+    ]
+    search = (
+        "("
+        + ", ".join(f'"{n}"' for n in search_fields)
+        + ("," if search_fields else "")
+        + ")"
+    )
     return f"""
 @admin.register({model_name})
 class {model_name}Admin(admin.ModelAdmin):
@@ -74,7 +81,9 @@ class {model_name}ViewSet({viewset_bases(scoped=scoped)}):
 """
 
 
-def _write_serializers_file(path: Path, app_name: str, model_name: str, fields: list[FieldSpec]) -> None:
+def _write_serializers_file(
+    path: Path, app_name: str, model_name: str, fields: list[FieldSpec]
+) -> None:
     path.write_text(
         f'''"""Serializers for {app_name}."""
 
@@ -89,13 +98,15 @@ from apps.{app_name}.models import {model_name}
     )
 
 
-def _write_admin_file(path: Path, app_name: str, model_name: str, fields: list[FieldSpec]) -> None:
+def _write_admin_file(
+    path: Path, app_name: str, model_name: str, fields: list[FieldSpec]
+) -> None:
     path.write_text(
-        f'''from django.contrib import admin
+        f"""from django.contrib import admin
 
 from apps.{app_name}.models import {model_name}
 {_admin_class(model_name, fields)}
-''',
+""",
         encoding="utf-8",
     )
 
@@ -205,7 +216,9 @@ def sync_api_stubs(
     else:
         text = views.read_text(encoding="utf-8")
         text = add_to_import(text, f"apps.{app_name}.models", model_name)
-        text = add_to_import(text, f"apps.{app_name}.serializers", f"{model_name}Serializer")
+        text = add_to_import(
+            text, f"apps.{app_name}.serializers", f"{model_name}Serializer"
+        )
         views.write_text(text, encoding="utf-8")
         upsert_class(
             views,

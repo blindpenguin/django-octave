@@ -30,7 +30,9 @@ def add_serializer_cmd(
     ] = None,
     fields: Annotated[
         str | None,
-        typer.Option("--fields", help="Comma-separated Meta.fields (default: inspected)."),
+        typer.Option(
+            "--fields", help="Comma-separated Meta.fields (default: inspected)."
+        ),
     ] = None,
     read_only: Annotated[
         str | None,

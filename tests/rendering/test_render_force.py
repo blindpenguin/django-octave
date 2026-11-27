@@ -43,7 +43,9 @@ def _tree(root: Path) -> dict[str, bytes]:
     }
 
 
-def test_force_keeps_foreign_files_and_overwrites_generated_ones(tmp_path: Path) -> None:
+def test_force_keeps_foreign_files_and_overwrites_generated_ones(
+    tmp_path: Path,
+) -> None:
     target = render_project(_ctx(tmp_path, force=False))
     (target / "notes.txt").write_text("mine", encoding="utf-8")
     (target / "apps" / "mine").mkdir()
@@ -53,7 +55,9 @@ def test_force_keeps_foreign_files_and_overwrites_generated_ones(tmp_path: Path)
     report = render_project_report(_ctx(tmp_path, force=True))
 
     assert (target / "notes.txt").read_text(encoding="utf-8") == "mine"
-    assert (target / "apps" / "mine" / "models.py").read_text(encoding="utf-8") == "# mine"
+    assert (target / "apps" / "mine" / "models.py").read_text(
+        encoding="utf-8"
+    ) == "# mine"
     assert "# edited" not in (target / "manage.py").read_text(encoding="utf-8")
     assert report.target == target
 
@@ -68,7 +72,9 @@ def test_force_reports_the_number_of_overwritten_files(tmp_path: Path) -> None:
     assert second.overwritten == generated
 
 
-def test_without_force_a_non_empty_target_is_refused_and_untouched(tmp_path: Path) -> None:
+def test_without_force_a_non_empty_target_is_refused_and_untouched(
+    tmp_path: Path,
+) -> None:
     target = tmp_path / "sample"
     target.mkdir()
     (target / "keep.txt").write_text("keep", encoding="utf-8")
@@ -115,7 +121,9 @@ def test_symlinked_directory_on_a_write_path_is_refused(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("dangling", [False, True], ids=["file-link", "dangling-link"])
-def test_symlinked_file_on_a_write_path_is_refused(tmp_path: Path, dangling: bool) -> None:
+def test_symlinked_file_on_a_write_path_is_refused(
+    tmp_path: Path, dangling: bool
+) -> None:
     target = tmp_path / "sample"
     target.mkdir()
     victim = tmp_path / "victim.txt"
@@ -138,7 +146,9 @@ def test_unwritable_destination_names_the_file(tmp_path: Path) -> None:
     with pytest.raises(TargetWriteError, match="manage.py"):
         render_project(_ctx(tmp_path, force=True))
 
-    assert sorted(p.name for p in target.iterdir()) == ["manage.py"]  # nothing else written
+    assert sorted(p.name for p in target.iterdir()) == [
+        "manage.py"
+    ]  # nothing else written
 
 
 def test_template_failure_leaves_the_target_untouched(

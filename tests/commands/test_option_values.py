@@ -28,7 +28,15 @@ def project(tmp_path: Path) -> Path:
         "--path", str(tmp_path))  # fmt: skip
     root = tmp_path / "demo"
     run("add", "blog", "--path", str(root))
-    run("add-model", "blog", "Post", "--fields", "title:char,body:text", "--path", str(root))
+    run(
+        "add-model",
+        "blog",
+        "Post",
+        "--fields",
+        "title:char,body:text",
+        "--path",
+        str(root),
+    )
     return root
 
 
@@ -46,11 +54,23 @@ def _views(root: Path) -> str:
 
 def test_add_viewset_accepts_a_normal_tag(project: Path) -> None:
     result = runner.invoke(
-        app, ["add-viewset", "blog", "Post", "--tag", "Blog Posts", "--force", "--path", str(project)]
+        app,
+        [
+            "add-viewset",
+            "blog",
+            "Post",
+            "--tag",
+            "Blog Posts",
+            "--force",
+            "--path",
+            str(project),
+        ],
     )
 
     assert result.exit_code == 0, result.output
-    assert _views(project).count('tags=["Blog Posts"]') == 6  # one per viewset operation
+    assert (
+        _views(project).count('tags=["Blog Posts"]') == 6
+    )  # one per viewset operation
 
 
 def test_add_action_accepts_normal_url_path_url_name_and_tag(project: Path) -> None:
@@ -77,7 +97,9 @@ def test_add_permission_accepts_a_normal_owner_attr(project: Path) -> None:
     )  # fmt: skip
 
     assert result.exit_code == 0, result.output
-    permissions = (project / "apps" / "blog" / "permissions.py").read_text(encoding="utf-8")
+    permissions = (project / "apps" / "blog" / "permissions.py").read_text(
+        encoding="utf-8"
+    )
     ast.parse(permissions)
     assert 'owner_attr = "created_by"' in permissions
     assert "getattr(obj, self.owner_attr, None)" in permissions
@@ -90,9 +112,26 @@ def test_add_permission_accepts_a_normal_owner_attr(project: Path) -> None:
         (["add-action", "blog", "Post", "publish", "--tag", BAD], "--tag"),
         (["add-action", "blog", "Post", "publish", "--url-path", BAD], "--url-path"),
         (["add-action", "blog", "Post", "publish", "--url-name", BAD], "--url-name"),
-        (["add-permission", "blog", "IsOwner", "--preset", "owner", "--owner-attr", BAD], "--owner-attr"),
+        (
+            [
+                "add-permission",
+                "blog",
+                "IsOwner",
+                "--preset",
+                "owner",
+                "--owner-attr",
+                BAD,
+            ],
+            "--owner-attr",
+        ),
     ],
-    ids=["viewset-tag", "action-tag", "action-url-path", "action-url-name", "permission-owner-attr"],
+    ids=[
+        "viewset-tag",
+        "action-tag",
+        "action-url-path",
+        "action-url-name",
+        "permission-owner-attr",
+    ],
 )
 def test_rejected_option_exits_1_with_one_line_and_changes_nothing(
     project: Path, args: list[str], option: str
@@ -107,10 +146,14 @@ def test_rejected_option_exits_1_with_one_line_and_changes_nothing(
     assert _tree(project) == before
 
 
-def test_add_action_ignores_an_unsafe_tag_found_in_the_existing_viewset(project: Path) -> None:
+def test_add_action_ignores_an_unsafe_tag_found_in_the_existing_viewset(
+    project: Path,
+) -> None:
     views_path = project / "apps" / "blog" / "views.py"
     views_path.write_text(
-        views_path.read_text(encoding="utf-8").replace('tags=["post"]', 'tags=["a/b c"]'),
+        views_path.read_text(encoding="utf-8").replace(
+            'tags=["post"]', 'tags=["a/b c"]'
+        ),
         encoding="utf-8",
     )
 
@@ -126,7 +169,9 @@ def test_add_action_ignores_an_unsafe_tag_found_in_the_existing_viewset(project:
     assert "a/b c" not in method
 
 
-def test_add_permission_for_an_unknown_viewset_leaves_no_half_written_file(project: Path) -> None:
+def test_add_permission_for_an_unknown_viewset_leaves_no_half_written_file(
+    project: Path,
+) -> None:
     before = _tree(project)
 
     result = runner.invoke(
@@ -140,12 +185,23 @@ def test_add_permission_for_an_unknown_viewset_leaves_no_half_written_file(proje
     assert _tree(project) == before  # permissions.py was not left behind
 
 
-def test_add_task_with_an_invalid_crontab_leaves_the_project_untouched(project: Path) -> None:
+def test_add_task_with_an_invalid_crontab_leaves_the_project_untouched(
+    project: Path,
+) -> None:
     assert runner.invoke(app, ["add-celery", "--path", str(project)]).exit_code == 0
     before = _tree(project)
 
     result = runner.invoke(
-        app, ["add-task", "blog", "nightly", "--crontab", "not a cron", "--path", str(project)]
+        app,
+        [
+            "add-task",
+            "blog",
+            "nightly",
+            "--crontab",
+            "not a cron",
+            "--path",
+            str(project),
+        ],
     )
 
     assert result.exit_code == 1
@@ -162,11 +218,22 @@ def test_a_command_that_would_write_broken_python_is_rolled_back(
         (app_dir / "permissions.py").write_text("class Broken(:\n", encoding="utf-8")
         return app_dir / "permissions.py"
 
-    monkeypatch.setattr("django_octave.commands.add_permission.write_permission", broken_write)
+    monkeypatch.setattr(
+        "django_octave.commands.add_permission.write_permission", broken_write
+    )
     before = _tree(project)
 
     result = runner.invoke(
-        app, ["add-permission", "blog", "IsMine", "--preset", "owner", "--path", str(project)]
+        app,
+        [
+            "add-permission",
+            "blog",
+            "IsMine",
+            "--preset",
+            "owner",
+            "--path",
+            str(project),
+        ],
     )
 
     assert result.exit_code == 1

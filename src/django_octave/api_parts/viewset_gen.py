@@ -72,9 +72,7 @@ def validate_permission(name: str) -> str:
     """Validate a stock DRF permission name (allowlist only)."""
     if name not in PERMISSIONS:
         allowed = ", ".join(sorted(PERMISSIONS))
-        raise ViewSetPermissionError(
-            f"Unknown permission {name!r}. Allowed: {allowed}"
-        )
+        raise ViewSetPermissionError(f"Unknown permission {name!r}. Allowed: {allowed}")
     return name
 
 
@@ -330,7 +328,9 @@ def write_viewset(
                 f"{class_name} already exists in {views_path}. Use --force to replace it."
             )
 
-        source = add_to_import(source, f"apps.{options.app_name}.models", options.model_name)
+        source = add_to_import(
+            source, f"apps.{options.app_name}.models", options.model_name
+        )
         source = add_to_import(
             source,
             f"apps.{options.app_name}.serializers",

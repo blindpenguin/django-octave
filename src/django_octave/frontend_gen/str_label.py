@@ -55,15 +55,13 @@ def parse_fk_label_overrides(raw: list[str] | None) -> dict[str, str]:
     for item in raw:
         if "=" not in item:
             raise ValueError(
-                f"Invalid --fk-label {item!r}; expected FIELD=ATTR "
-                "(e.g. author=email)"
+                f"Invalid --fk-label {item!r}; expected FIELD=ATTR (e.g. author=email)"
             )
         field, _, attr = item.partition("=")
         field, attr = field.strip(), attr.strip()
         if not field or not attr:
             raise ValueError(
-                f"Invalid --fk-label {item!r}; expected FIELD=ATTR "
-                "(e.g. author=email)"
+                f"Invalid --fk-label {item!r}; expected FIELD=ATTR (e.g. author=email)"
             )
         out[field] = attr
     return out

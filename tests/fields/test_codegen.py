@@ -76,7 +76,9 @@ def test_uuid4_default_is_a_reference_not_a_call() -> None:
 
 
 def test_uuid_literal_default_is_canonical() -> None:
-    node = _default_node(field_source(parse_field(f"ref:uuid:default={UUID_TEXT.upper()}")))
+    node = _default_node(
+        field_source(parse_field(f"ref:uuid:default={UUID_TEXT.upper()}"))
+    )
 
     assert ast.unparse(node) == f"uuid.UUID('{UUID_TEXT}')"
 
@@ -197,7 +199,9 @@ def test_related_name_line_parses_and_carries_exactly_the_value(value: str) -> N
         ),
     ],
 )
-def test_relation_without_related_name_is_unchanged(declaration: str, expected: str) -> None:
+def test_relation_without_related_name_is_unchanged(
+    declaration: str, expected: str
+) -> None:
     assert field_source(parse_field(declaration)) == expected
 
 

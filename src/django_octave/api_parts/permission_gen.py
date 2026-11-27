@@ -168,7 +168,10 @@ def write_permission(
         )
 
     # Ensure SAFE_METHODS is available when needed (may already have BasePermission only)
-    if options.preset in {"staff_or_read", "auth_or_read"} and "SAFE_METHODS" not in source:
+    if (
+        options.preset in {"staff_or_read", "auth_or_read"}
+        and "SAFE_METHODS" not in source
+    ):
         if "from rest_framework.permissions import BasePermission" in source:
             source = source.replace(
                 "from rest_framework.permissions import BasePermission",
@@ -226,9 +229,7 @@ def wire_permission_to_viewset(
             f"Run: django-octave add-viewset {app_name} …"
         )
 
-    source = add_to_import(
-        source, f"apps.{app_name}.permissions", permission_class
-    )
+    source = add_to_import(source, f"apps.{app_name}.permissions", permission_class)
     views_path.write_text(source, encoding="utf-8")
     source = views_path.read_text(encoding="utf-8")
 

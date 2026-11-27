@@ -22,7 +22,7 @@ def _new(tmp_path: Path) -> Path:
                 "sqlite",
                 "--no-docker",
                 "--no-multitenancy",
-        "--no-frontend",
+                "--no-frontend",
                 "--path",
                 str(tmp_path),
             ],
@@ -45,7 +45,9 @@ def test_add_basename_and_add_test_reverse(tmp_path: Path) -> None:
 
 def test_cross_app_factory_and_allow_any(tmp_path: Path) -> None:
     root = _new(tmp_path)
-    assert runner.invoke(app, ["add", "ingredients", "--path", str(root)]).exit_code == 0
+    assert (
+        runner.invoke(app, ["add", "ingredients", "--path", str(root)]).exit_code == 0
+    )
     assert runner.invoke(app, ["add", "recipes", "--path", str(root)]).exit_code == 0
     assert (
         runner.invoke(
@@ -106,9 +108,9 @@ def test_cross_app_factory_and_allow_any(tmp_path: Path) -> None:
         ).exit_code
         == 0
     )
-    factory = (
-        root / "tests" / "factories" / "recipes_recipe.py"
-    ).read_text(encoding="utf-8")
+    factory = (root / "tests" / "factories" / "recipes_recipe.py").read_text(
+        encoding="utf-8"
+    )
     assert "ingredients_ingredient.IngredientFactory" in factory
     api = (root / "tests" / "test_recipes_recipe_api.py").read_text(encoding="utf-8")
     assert "test_list_anonymous_ok" in api

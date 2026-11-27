@@ -36,7 +36,9 @@ def test_wire_crud_injects_routes_and_nav(tmp_path: Path) -> None:
     assert "path: 'recipes'" in router
     assert "path: '/recipes'" not in router
     assert "component: AppLayout" in router
-    layout = (frontend / "src" / "layouts" / "AppLayout.vue").read_text(encoding="utf-8")
+    layout = (frontend / "src" / "layouts" / "AppLayout.vue").read_text(
+        encoding="utf-8"
+    )
     assert "crudNavItems" in layout
     assert "// --- django-octave crud nav begin ---" in layout
     assert "{ label: 'Recipe', to: '/recipes' }," in layout
@@ -54,6 +56,8 @@ def test_wire_crud_injects_routes_and_nav(tmp_path: Path) -> None:
     router = (frontend / "src" / "router" / "index.ts").read_text(encoding="utf-8")
     assert "categories-list" in router
     assert router.count("recipes-list") == 1
-    layout = (frontend / "src" / "layouts" / "AppLayout.vue").read_text(encoding="utf-8")
+    layout = (frontend / "src" / "layouts" / "AppLayout.vue").read_text(
+        encoding="utf-8"
+    )
     assert "{ label: 'Category', to: '/categories' }," in layout
     assert layout.count("label: 'Recipe'") == 1

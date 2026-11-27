@@ -63,6 +63,4 @@ def resolve_add_frontend_options(
 
     assert register is not None
     assert crud is not None
-    return AddFrontendOptions(
-        path=path, register=register, crud=crud, force=force
-    )
+    return AddFrontendOptions(path=path, register=register, crud=crud, force=force)

@@ -11,7 +11,9 @@ from django_octave.errors import OctaveError
 from django_octave.project.detect import detect_project
 from django_octave.tenancy import ensure_tenancy_module
 
-AUTH_API_TEMPLATES = Path(__file__).resolve().parent.parent / "templates" / "frontend_django"
+AUTH_API_TEMPLATES = (
+    Path(__file__).resolve().parent.parent / "templates" / "frontend_django"
+)
 
 _ENV_MARKER_BEGIN = "# --- django-octave frontend begin ---"
 _ENV_MARKER_END = "# --- django-octave frontend end ---"
@@ -148,7 +150,9 @@ def write_auth_api(root: Path, *, force: bool = False) -> Path:
     use_multitenancy = detect_project(root).use_multitenancy
     if use_multitenancy:
         ensure_tenancy_module(root / "apps")
-    path.write_text(render_auth_api(use_multitenancy=use_multitenancy), encoding="utf-8")
+    path.write_text(
+        render_auth_api(use_multitenancy=use_multitenancy), encoding="utf-8"
+    )
     return path
 
 
@@ -170,8 +174,10 @@ def patch_urls(root: Path, *, include_register: bool) -> Path:
         raise DjangoPatchError(f"Missing {urls_path}")
 
     text = urls_path.read_text(encoding="utf-8")
-    skip_register = include_register and register_endpoint_present(root) and (
-        _URLS_IMPORT_BEGIN not in text
+    skip_register = (
+        include_register
+        and register_endpoint_present(root)
+        and (_URLS_IMPORT_BEGIN not in text)
     )
     wire_register = include_register and not skip_register
 

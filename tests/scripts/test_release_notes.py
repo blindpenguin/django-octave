@@ -67,7 +67,9 @@ def test_breaking_change_footer_is_listed_first_with_its_own_text() -> None:
     )
     assert "Co-Authored-By" not in md
     assert "Someone" not in md
-    assert "### Fixes\n- **project:** harden generated projects" in md  # still a fix too
+    assert (
+        "### Fixes\n- **project:** harden generated projects" in md
+    )  # still a fix too
 
 
 def test_footer_stops_at_a_trailer_without_a_blank_line() -> None:
@@ -87,7 +89,9 @@ def test_hyphenated_spelling_and_several_footers_are_supported() -> None:
 def test_a_footer_on_a_non_user_facing_commit_is_still_announced() -> None:
     mod = _load()
 
-    md = mod._format([("chore(deps): bump django", "BREAKING CHANGE: Django 6 is required\n")])
+    md = mod._format(
+        [("chore(deps): bump django", "BREAKING CHANGE: Django 6 is required\n")]
+    )
 
     assert "### Breaking changes\n- **deps:** Django 6 is required" in md
     assert "### Fixes" not in md
@@ -98,26 +102,39 @@ def test_bang_and_footer_on_one_commit_are_reported_once() -> None:
     mod = _load()
 
     md = mod._format(
-        [("feat(api)!: rename collection paths", "BREAKING CHANGE: collection paths are renamed\n")]
+        [
+            (
+                "feat(api)!: rename collection paths",
+                "BREAKING CHANGE: collection paths are renamed\n",
+            )
+        ]
     )
 
     assert md.count("### Breaking changes") == 1
-    assert md.count("collection paths") == 2  # once as the breaking entry, once as the feature
+    assert (
+        md.count("collection paths") == 2
+    )  # once as the breaking entry, once as the feature
     assert "- **api:** collection paths are renamed" in md
-    assert md.count("rename collection paths") == 1  # the subject only appears under Features
+    assert (
+        md.count("rename collection paths") == 1
+    )  # the subject only appears under Features
 
 
 def test_plain_subjects_and_empty_bodies_behave_as_before() -> None:
     mod = _load()
 
     assert mod._format(["fix(a): b"]) == mod._format([("fix(a): b", "")])
-    assert "Breaking" not in mod._format([("fix(a): b", "just some prose\nBREAKING mentioned inline\n")])
+    assert "Breaking" not in mod._format(
+        [("fix(a): b", "just some prose\nBREAKING mentioned inline\n")]
+    )
 
 
 def test_the_version_bump_commit_is_still_skipped() -> None:
     mod = _load()
 
-    md = mod._format([("chore(release): 0.3.0", "BREAKING CHANGE: ignored\n"), "fix(a): b"])
+    md = mod._format(
+        [("chore(release): 0.3.0", "BREAKING CHANGE: ignored\n"), "fix(a): b"]
+    )
 
     assert "ignored" not in md
     assert "0.3.0" not in md
@@ -136,19 +153,31 @@ def test_commits_are_read_with_their_bodies_from_a_real_git_repository(
     }  # fmt: skip
 
     def git(*args: str) -> None:
-        subprocess.run(["git", *args], cwd=tmp_path, env=env, check=True, capture_output=True)
+        subprocess.run(
+            ["git", *args], cwd=tmp_path, env=env, check=True, capture_output=True
+        )
 
     git("init", "-q")
     (tmp_path / "a").write_text("1", encoding="utf-8")
     git("add", "a")
-    git("commit", "-q", "-m", "fix(core): first", "-m", "BREAKING CHANGE: it is different\nnow.")
+    git(
+        "commit",
+        "-q",
+        "-m",
+        "fix(core): first",
+        "-m",
+        "BREAKING CHANGE: it is different\nnow.",
+    )
     (tmp_path / "a").write_text("2", encoding="utf-8")
     git("commit", "-q", "-am", "feat(core): second")
     monkeypatch.chdir(tmp_path)
 
     commits = mod._commits("", "HEAD")
 
-    assert [subject for subject, _ in commits] == ["feat(core): second", "fix(core): first"]
+    assert [subject for subject, _ in commits] == [
+        "feat(core): second",
+        "fix(core): first",
+    ]
     assert "BREAKING CHANGE: it is different" in commits[1][1]
     md = mod._format(commits)
     assert "- **core:** it is different now." in md

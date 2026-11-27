@@ -43,7 +43,7 @@ class OtherViewSet(viewsets.ModelViewSet):
     queryset = Note.objects.all()
 '''
 
-SERIALIZERS = '''\
+SERIALIZERS = """\
 from rest_framework import serializers
 
 from apps.notes.models import Note
@@ -54,14 +54,16 @@ class NoteSerializer(serializers.ModelSerializer):
         model = Note
         fields = ("id", "title", "owner", "assignee")
         read_only_fields = ("id",)
-'''
+"""
 
 
 @pytest.fixture
 def app_dir(tmp_path: Path) -> Path:
     apps = tmp_path / "apps"
     (apps / "core").mkdir(parents=True)
-    (apps / "core" / "ownership.py").write_text("class OwnerScopedMixin: ...\n", encoding="utf-8")
+    (apps / "core" / "ownership.py").write_text(
+        "class OwnerScopedMixin: ...\n", encoding="utf-8"
+    )
     app = apps / "notes"
     app.mkdir()
     (app / "views.py").write_text(VIEWS, encoding="utf-8")
@@ -84,7 +86,10 @@ def _serializers(app: Path) -> str:
 def test_viewset_bases_put_the_owner_mixin_before_the_tenant_mixin() -> None:
     assert viewset_bases(scoped=False) == "viewsets.ModelViewSet"
     assert viewset_bases(scoped=True) == "TenantScopedMixin, viewsets.ModelViewSet"
-    assert viewset_bases(scoped=False, owned=True) == "OwnerScopedMixin, viewsets.ModelViewSet"
+    assert (
+        viewset_bases(scoped=False, owned=True)
+        == "OwnerScopedMixin, viewsets.ModelViewSet"
+    )
     assert (
         viewset_bases(scoped=True, owned=True)
         == "OwnerScopedMixin, TenantScopedMixin, viewsets.ModelViewSet"
@@ -92,8 +97,9 @@ def test_viewset_bases_put_the_owner_mixin_before_the_tenant_mixin() -> None:
 
 
 def test_the_generated_owner_permission_declares_its_attribute(tmp_path: Path) -> None:
-    source = "from rest_framework.permissions import BasePermission\n" + build_permission_class(
-        "IsOwner", preset="owner", owner_attr="created_by"
+    source = (
+        "from rest_framework.permissions import BasePermission\n"
+        + build_permission_class("IsOwner", preset="owner", owner_attr="created_by")
     )
     path = tmp_path / "permissions.py"
     path.write_text(source, encoding="utf-8")
@@ -101,9 +107,13 @@ def test_the_generated_owner_permission_declares_its_attribute(tmp_path: Path) -
     assert owner_attr_of_permission(path, "IsOwner") == "created_by"
 
 
-def test_other_presets_and_hand_written_classes_have_no_owner_attr(tmp_path: Path) -> None:
+def test_other_presets_and_hand_written_classes_have_no_owner_attr(
+    tmp_path: Path,
+) -> None:
     source = "from rest_framework.permissions import BasePermission, SAFE_METHODS\n"
-    source += build_permission_class("IsStaff", preset="staff_or_read", owner_attr="owner")
+    source += build_permission_class(
+        "IsStaff", preset="staff_or_read", owner_attr="owner"
+    )
     source += "\n\nclass Handmade(BasePermission):\n    pass\n"
     path = tmp_path / "permissions.py"
     path.write_text(source, encoding="utf-8")
@@ -115,10 +125,7 @@ def test_other_presets_and_hand_written_classes_have_no_owner_attr(tmp_path: Pat
 
 
 def test_owner_attr_is_read_per_class_not_from_a_neighbour(tmp_path: Path) -> None:
-    source = (
-        "class Plain:\n    pass\n\n\n"
-        'class IsOwner:\n    owner_attr = "owner"\n'
-    )
+    source = 'class Plain:\n    pass\n\n\nclass IsOwner:\n    owner_attr = "owner"\n'
     path = tmp_path / "permissions.py"
     path.write_text(source, encoding="utf-8")
 
@@ -147,7 +154,9 @@ def test_ensure_ownership_module_names_the_missing_file(tmp_path: Path) -> None:
 
 
 def test_apply_owner_scoping_wires_viewset_and_serializer(app_dir: Path) -> None:
-    notes = apply_owner_scoping(app_dir, viewset_class="NoteViewSet", owner_attr="owner")
+    notes = apply_owner_scoping(
+        app_dir, viewset_class="NoteViewSet", owner_attr="owner"
+    )
 
     views = _views(app_dir)
     assert "from apps.core.ownership import OwnerScopedMixin" in views
@@ -166,7 +175,9 @@ def test_apply_owner_scoping_is_idempotent(app_dir: Path) -> None:
     views_once = _views(app_dir)
     serializers_once = _serializers(app_dir)
 
-    notes = apply_owner_scoping(app_dir, viewset_class="NoteViewSet", owner_attr="owner")
+    notes = apply_owner_scoping(
+        app_dir, viewset_class="NoteViewSet", owner_attr="owner"
+    )
 
     assert _views(app_dir) == views_once
     assert _serializers(app_dir) == serializers_once
@@ -203,25 +214,35 @@ def test_apply_owner_scoping_can_change_the_owner_attribute(app_dir: Path) -> No
     assert _views(app_dir).count("owner_field") == 1
 
 
-def test_a_missing_serializer_is_reported_but_the_viewset_is_still_scoped(app_dir: Path) -> None:
+def test_a_missing_serializer_is_reported_but_the_viewset_is_still_scoped(
+    app_dir: Path,
+) -> None:
     (app_dir / "serializers.py").unlink()
 
-    notes = apply_owner_scoping(app_dir, viewset_class="NoteViewSet", owner_attr="owner")
+    notes = apply_owner_scoping(
+        app_dir, viewset_class="NoteViewSet", owner_attr="owner"
+    )
 
     assert viewset_owner_field(_views(app_dir), "NoteViewSet") == "owner"
     assert any("not found: make 'owner' read-only" in n for n in notes)
 
 
-def test_an_owner_attribute_that_is_not_a_serializer_field_is_left_alone(app_dir: Path) -> None:
+def test_an_owner_attribute_that_is_not_a_serializer_field_is_left_alone(
+    app_dir: Path,
+) -> None:
     before = _serializers(app_dir)
 
-    notes = apply_owner_scoping(app_dir, viewset_class="NoteViewSet", owner_attr="created_by")
+    notes = apply_owner_scoping(
+        app_dir, viewset_class="NoteViewSet", owner_attr="created_by"
+    )
 
     assert _serializers(app_dir) == before
     assert any("is not one of its fields" in n for n in notes)
 
 
-def test_apply_owner_scoping_refuses_a_project_without_the_mixin_module(app_dir: Path) -> None:
+def test_apply_owner_scoping_refuses_a_project_without_the_mixin_module(
+    app_dir: Path,
+) -> None:
     (app_dir.parent / "core" / "ownership.py").unlink()
     before = _views(app_dir)
 
@@ -232,7 +253,9 @@ def test_apply_owner_scoping_refuses_a_project_without_the_mixin_module(app_dir:
 
 
 @pytest.mark.parametrize("attr", ["", "class", 'x", y=("', "a-b"])
-def test_apply_owner_scoping_validates_the_attribute_first(app_dir: Path, attr: str) -> None:
+def test_apply_owner_scoping_validates_the_attribute_first(
+    app_dir: Path, attr: str
+) -> None:
     before = _views(app_dir)
 
     with pytest.raises(InvalidOptionError):

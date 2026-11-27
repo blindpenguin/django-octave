@@ -31,17 +31,27 @@ ALLOWED_DEPLOY_WARNINGS = {"security.W021", "drf_spectacular.W002"}
 
 
 @pytest.fixture(scope="module", params=["multitenant", "plain"])
-def project(request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory) -> Path:
+def project(
+    request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory
+) -> Path:
     parent = tmp_path_factory.mktemp(f"octave-hardening-{request.param}")
     multitenancy = request.param == "multitenant"
-    root = build_project(parent, multitenancy=multitenancy, apps=APPS if multitenancy else ())
-    done = run(["uv", "run", "python", "manage.py", "collectstatic", "--noinput"], root, prod_env(root))
+    root = build_project(
+        parent, multitenancy=multitenancy, apps=APPS if multitenancy else ()
+    )
+    done = run(
+        ["uv", "run", "python", "manage.py", "collectstatic", "--noinput"],
+        root,
+        prod_env(root),
+    )
     assert done.returncode == 0, done.stdout + done.stderr
     return root
 
 
 def _manage(project: Path, *args: str, **env: str | None):
-    return run(["uv", "run", "python", "manage.py", *args], project, prod_env(project, **env))
+    return run(
+        ["uv", "run", "python", "manage.py", *args], project, prod_env(project, **env)
+    )
 
 
 def test_collectstatic_writes_the_manifest(project: Path) -> None:
@@ -77,7 +87,9 @@ def test_prod_boots_with_explicit_hosts(project: Path) -> None:
     assert done.returncode == 0, done.stderr
 
 
-def test_same_named_tenant_models_in_two_apps_pass_the_system_check(project: Path) -> None:
+def test_same_named_tenant_models_in_two_apps_pass_the_system_check(
+    project: Path,
+) -> None:
     if not (project / "apps" / "things").is_dir():
         pytest.skip("only the multitenancy project has two apps")
 
@@ -95,15 +107,23 @@ def _copy(template: Path, project: Path, name: str) -> str:
 def test_production_scenarios_pass(project: Path) -> None:
     scenario = _copy(HARDENING, project, "test_hardening_prod.py")
 
-    done = run(["uv", "run", "pytest", "-q", scenario, "-p", "no:cacheprovider"], project, prod_env(project))
+    done = run(
+        ["uv", "run", "pytest", "-q", scenario, "-p", "no:cacheprovider"],
+        project,
+        prod_env(project),
+    )
 
     assert done.returncode == 0, done.stdout + done.stderr
 
 
-def test_rate_limits_use_the_real_client_address_behind_one_proxy(project: Path) -> None:
+def test_rate_limits_use_the_real_client_address_behind_one_proxy(
+    project: Path,
+) -> None:
     scenario = _copy(PROXY, project, "test_hardening_proxy.py")
     env = prod_env(project, DJANGO_NUM_PROXIES="1")
 
-    done = run(["uv", "run", "pytest", "-q", scenario, "-p", "no:cacheprovider"], project, env)
+    done = run(
+        ["uv", "run", "pytest", "-q", scenario, "-p", "no:cacheprovider"], project, env
+    )
 
     assert done.returncode == 0, done.stdout + done.stderr

@@ -17,14 +17,14 @@ from django_octave.api_parts.serializer_gen import (
 )
 from django_octave.inspect.model_fields import inspect_model_fields
 
-SAMPLE = '''
+SAMPLE = """
 from django.db import models
 from apps.core.models import TimeStampedModel
 
 class Post(TimeStampedModel):
     title = models.CharField(max_length=100)
     body = models.TextField()
-'''
+"""
 
 
 def test_resolve_defaults() -> None:
@@ -50,9 +50,7 @@ def test_resolve_unknown_field() -> None:
 
 
 def test_build_serializer_class() -> None:
-    src = build_serializer_class(
-        "Post", fields=["id", "title"], read_only=["id"]
-    )
+    src = build_serializer_class("Post", fields=["id", "title"], read_only=["id"])
     assert "class PostSerializer" in src
     assert '"id", "title",' in src
     assert 'read_only_fields = ("id",)' in src
@@ -83,7 +81,7 @@ def test_write_serializer_create_and_refuse(tmp_path: Path) -> None:
     assert text.count("class PostSerializer") == 1
 
 
-SAMPLE_REL = '''
+SAMPLE_REL = """
 from django.db import models
 from apps.core.models import TimeStampedModel
 
@@ -93,7 +91,7 @@ class Author(TimeStampedModel):
 class Post(TimeStampedModel):
     title = models.CharField(max_length=100)
     author = models.ForeignKey("Author", on_delete=models.CASCADE)
-'''
+"""
 
 
 def test_write_serializer_nested(tmp_path: Path) -> None:
@@ -123,23 +121,23 @@ def test_nested_user_helper_before_existing_parent(tmp_path: Path) -> None:
     tickets.mkdir(parents=True)
     users.mkdir(parents=True)
     (tickets / "models.py").write_text(
-        '''
+        """
 from django.db import models
 from apps.core.models import TimeStampedModel
 
 class Ticket(TimeStampedModel):
     subject = models.CharField(max_length=200)
     assignee = models.ForeignKey("users.User", on_delete=models.SET_NULL, null=True)
-''',
+""",
         encoding="utf-8",
     )
     (users / "models.py").write_text(
-        '''
+        """
 from django.db import models
 
 class User(models.Model):
     email = models.EmailField()
-''',
+""",
         encoding="utf-8",
     )
     ser = tickets / "serializers.py"
@@ -205,14 +203,14 @@ class UserNestedSerializer(serializers.ModelSerializer):
     )
 
 
-TENANT_SAMPLE = '''
+TENANT_SAMPLE = """
 from django.db import models
 from apps.core.models import TenantAwareModel
 
 
 class Note(TenantAwareModel):
     name = models.CharField(max_length=255)
-'''
+"""
 
 
 def test_resolve_tenant_aware_model_never_exposes_tenant() -> None:

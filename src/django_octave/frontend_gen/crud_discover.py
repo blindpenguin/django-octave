@@ -62,7 +62,9 @@ def _router_paths(urls_source: str) -> dict[str, str]:
     """Map ViewSet class name → router path segment."""
     out: dict[str, str] = {}
     for m in _REGISTER_RE.finditer(urls_source):
-        path = m.group("path_dq") if m.group("path_dq") is not None else m.group("path_sq")
+        path = (
+            m.group("path_dq") if m.group("path_dq") is not None else m.group("path_sq")
+        )
         if path is None:
             continue
         out[m.group("viewset")] = path
@@ -88,7 +90,9 @@ def discover_app_resources(project_root: Path, app_name: str) -> list[ResourceSp
     model_names: set[str] = set()
     if models_path.is_file():
         model_names = set(
-            re.findall(r"^class\s+(\w+)\s*\(", models_path.read_text(encoding="utf-8"), re.M)
+            re.findall(
+                r"^class\s+(\w+)\s*\(", models_path.read_text(encoding="utf-8"), re.M
+            )
         )
 
     specs: list[ResourceSpec] = []

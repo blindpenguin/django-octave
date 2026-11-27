@@ -114,7 +114,11 @@ def _breaking_footers(body: str) -> list[str]:
             continue
         parts = [match.group("text").strip()]
         i += 1
-        while i < len(lines) and lines[i].strip() and not _TRAILER_RE.match(lines[i].strip()):
+        while (
+            i < len(lines)
+            and lines[i].strip()
+            and not _TRAILER_RE.match(lines[i].strip())
+        ):
             parts.append(lines[i].strip())
             i += 1
         text = " ".join(part for part in parts if part)

@@ -94,7 +94,9 @@ def test_patch_urls_replaces_throttled_obtain_view_and_keeps_refresh_throttle(
     assert "throttled(TokenRefreshView)" in urls
 
 
-def test_patch_urls_puts_frontend_imports_after_the_throttle_import(tmp_path: Path) -> None:
+def test_patch_urls_puts_frontend_imports_after_the_throttle_import(
+    tmp_path: Path,
+) -> None:
     root = _new_project(tmp_path)
 
     patch_django_for_frontend(root, include_register=False)
@@ -122,7 +124,9 @@ def test_patch_urls_still_patches_a_project_generated_before_throttling(
     urls_path = root / "config" / "urls.py"
     stock = urls_path.read_text(encoding="utf-8")
     stock = stock.replace("from apps.core.throttling import throttled\n\n", "")
-    stock = stock.replace("throttled(TokenObtainPairView)", "TokenObtainPairView.as_view()")
+    stock = stock.replace(
+        "throttled(TokenObtainPairView)", "TokenObtainPairView.as_view()"
+    )
     stock = stock.replace("throttled(TokenRefreshView)", "TokenRefreshView.as_view()")
     urls_path.write_text(stock, encoding="utf-8")
 
@@ -147,11 +151,15 @@ def _new_mt_project(tmp_path: Path) -> Path:
 
 
 @pytest.mark.parametrize("multitenancy", [False, True])
-def test_render_auth_api_parses_and_throttles_credential_views(multitenancy: bool) -> None:
+def test_render_auth_api_parses_and_throttles_credential_views(
+    multitenancy: bool,
+) -> None:
     source = render_auth_api(use_multitenancy=multitenancy)
 
     ast.parse(source)
-    assert source.count("throttle_classes = [AuthRateThrottle]") == 2  # obtain + register
+    assert (
+        source.count("throttle_classes = [AuthRateThrottle]") == 2
+    )  # obtain + register
     assert "from apps.core.throttling import AuthRateThrottle" in source
     assert 'fields = ("id", "email", "label")' in source  # exposed fields unchanged
 
@@ -173,7 +181,9 @@ def test_render_auth_api_multitenancy_user_list_is_scoped_to_the_tenant() -> Non
     assert "User.objects.all().order_by" not in source
 
 
-def test_write_auth_api_uses_the_multitenancy_variant_for_mt_projects(tmp_path: Path) -> None:
+def test_write_auth_api_uses_the_multitenancy_variant_for_mt_projects(
+    tmp_path: Path,
+) -> None:
     root = _new_mt_project(tmp_path)
 
     path = write_auth_api(root)
@@ -196,7 +206,9 @@ def test_write_auth_api_refuses_a_multitenancy_project_without_tenancy_module(
 def test_write_auth_api_keeps_an_existing_module_unless_forced(tmp_path: Path) -> None:
     root = _new_project(tmp_path)
     path = write_auth_api(root)
-    path.write_text(path.read_text(encoding="utf-8") + "\n# my edit\n", encoding="utf-8")
+    path.write_text(
+        path.read_text(encoding="utf-8") + "\n# my edit\n", encoding="utf-8"
+    )
 
     write_auth_api(root)
     assert "# my edit" in path.read_text(encoding="utf-8")
@@ -248,7 +260,9 @@ def test_patch_env_proxies_is_idempotent(tmp_path: Path) -> None:
     assert once.count("DJANGO_NUM_PROXIES=") == 1
 
 
-def test_patch_django_for_frontend_adds_proxy_count_to_env_example(tmp_path: Path) -> None:
+def test_patch_django_for_frontend_adds_proxy_count_to_env_example(
+    tmp_path: Path,
+) -> None:
     root = _new_project(tmp_path)
 
     patch_django_for_frontend(root, include_register=False)
@@ -265,12 +279,15 @@ def test_render_auth_api_registration_validates_the_password_against_the_user(
     source = render_auth_api(use_multitenancy=multitenancy)
 
     ast.parse(source)
-    assert 'validate_password(attrs["password"], user=User(email=attrs["email"]))' in source
+    assert (
+        'validate_password(attrs["password"], user=User(email=attrs["email"]))'
+        in source
+    )
     assert "except DjangoValidationError as exc:" in source
     assert '{"password": list(exc.messages)}' in source
     # the helper user is only a data holder for the validators; it is never saved
     assert "User(email=attrs" in source
-    assert "User(email=attrs[\"email\"]).save" not in source
+    assert 'User(email=attrs["email"]).save' not in source
 
 
 def test_render_auth_api_keeps_the_other_registration_error_shapes() -> None:

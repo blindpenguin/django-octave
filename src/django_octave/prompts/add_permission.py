@@ -67,10 +67,13 @@ def resolve_add_permission_options(
 
     if interactive and viewset is None:
         if Confirm.ask("Wire to a viewset?", default=False, console=console):
-            viewset = Prompt.ask(
-                "ViewSet (Model or ModelViewSet)",
-                console=console,
-            ).strip() or None
+            viewset = (
+                Prompt.ask(
+                    "ViewSet (Model or ModelViewSet)",
+                    console=console,
+                ).strip()
+                or None
+            )
 
     return AddPermissionPromptOptions(
         app=app,

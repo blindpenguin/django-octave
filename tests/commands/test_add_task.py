@@ -23,7 +23,7 @@ def _project(tmp_path: Path) -> Path:
                 "sqlite",
                 "--no-docker",
                 "--no-multitenancy",
-        "--no-frontend",
+                "--no-frontend",
                 "--path",
                 str(tmp_path),
             ],

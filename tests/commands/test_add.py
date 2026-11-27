@@ -52,7 +52,9 @@ def test_add_happy_path(tmp_path: Path) -> None:
     models = (app_dir / "models.py").read_text(encoding="utf-8")
     assert "TimeStampedModel" in models
     assert "class Blog" in models
-    assert 'router.register("blogs"' in (app_dir / "urls.py").read_text(encoding="utf-8")
+    assert 'router.register("blogs"' in (app_dir / "urls.py").read_text(
+        encoding="utf-8"
+    )
 
 
 def test_add_with_explicit_model(tmp_path: Path) -> None:

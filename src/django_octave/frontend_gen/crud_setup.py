@@ -70,9 +70,7 @@ def generate_crud(
     """Generate CRUD pages for one model. Returns (written paths, warnings)."""
     root = root.resolve()
     if not frontend_configured(root):
-        raise CrudSetupError(
-            "No frontend/ found. Run: django-octave add-frontend"
-        )
+        raise CrudSetupError("No frontend/ found. Run: django-octave add-frontend")
 
     _ensure_user_fk_support(root)
     spec = require_resource(root, app_name, model_name)
@@ -99,9 +97,7 @@ def generate_crud_all(
     """
     root = root.resolve()
     if not frontend_configured(root):
-        raise CrudSetupError(
-            "No frontend/ found. Run: django-octave add-frontend"
-        )
+        raise CrudSetupError("No frontend/ found. Run: django-octave add-frontend")
 
     _ensure_user_fk_support(root)
     written: list[Path] = []
@@ -135,5 +131,7 @@ def generate_crud_all(
             generated.append(enriched)
 
     if generated:
-        written.extend(wire_crud(_frontend_dir(root), _specs_for_wiring(root, generated)))
+        written.extend(
+            wire_crud(_frontend_dir(root), _specs_for_wiring(root, generated))
+        )
     return written, warnings, skips

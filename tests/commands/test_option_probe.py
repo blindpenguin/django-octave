@@ -129,7 +129,9 @@ def _executable_marker_calls(root: Path) -> list[str]:
             if isinstance(node, ast.Call) and any(
                 isinstance(a, ast.Constant) and a.value == MARKER for a in node.args
             ):
-                problems.append(f"{path.relative_to(root)}: executes {ast.unparse(node)[:60]}")
+                problems.append(
+                    f"{path.relative_to(root)}: executes {ast.unparse(node)[:60]}"
+                )
     return problems
 
 
@@ -145,7 +147,15 @@ def project(tmp_path_factory: pytest.TempPathFactory) -> Path:
         "--path", str(parent))  # fmt: skip
     root = parent / "demo"
     run("add", "blog", "--path", str(root))
-    run("add-model", "blog", "Post", "--fields", "title:char,body:text", "--path", str(root))
+    run(
+        "add-model",
+        "blog",
+        "Post",
+        "--fields",
+        "title:char,body:text",
+        "--path",
+        str(root),
+    )
     run("add-celery", "--path", str(root))
     return root
 
@@ -172,7 +182,9 @@ def test_free_text_option_cannot_inject_code(
             failures.append(f"{label}: traceback in output")
         if result.exit_code != 0:
             if _snapshot(project) != baseline:
-                failures.append(f"{label}: exit {result.exit_code} but the project tree changed")
+                failures.append(
+                    f"{label}: exit {result.exit_code} but the project tree changed"
+                )
         else:
             failures += [f"{label}: {p}" for p in _executable_marker_calls(project)]
         _restore(project, baseline)
@@ -190,7 +202,16 @@ def test_related_name_value_cannot_inject_code(project: Path, option: str) -> No
 
     for payload in PAYLOADS:
         spec = f"owner:fk:to=users.User:related_name={payload}"
-        args = ["add-model", "blog", "Post", option, spec, "--path", str(project), "--force"]
+        args = [
+            "add-model",
+            "blog",
+            "Post",
+            option,
+            spec,
+            "--path",
+            str(project),
+            "--force",
+        ]
         result = runner.invoke(app, args)
         label = f"payload {payload!r}"
 

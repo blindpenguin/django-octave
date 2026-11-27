@@ -60,10 +60,7 @@ def detect_project(path: Path) -> OctaveProject:
 
     if missing:
         joined = ", ".join(missing)
-        msg = (
-            f"{root} does not look like a django-octave project "
-            f"(missing: {joined})"
-        )
+        msg = f"{root} does not look like a django-octave project (missing: {joined})"
         raise NotOctaveProjectError(msg)
 
     core_models = apps_dir / "core" / "models.py"

@@ -23,14 +23,14 @@ runner = CliRunner()
 MIXIN_CLASS = "class NoteViewSet(TenantScopedMixin, viewsets.ModelViewSet):"
 MIXIN_IMPORT = "from apps.core.tenancy import TenantScopedMixin"
 
-TENANT_MODEL = '''
+TENANT_MODEL = """
 from django.db import models
 from apps.core.models import TenantAwareModel
 
 
 class Note(TenantAwareModel):
     name = models.CharField(max_length=255)
-'''
+"""
 
 
 def _project(tmp_path: Path, *, multitenancy: bool) -> Path:
@@ -109,7 +109,9 @@ def test_write_viewset_scoped_for_tenant_aware_model(tmp_path: Path) -> None:
 
     views_path, _ = write_viewset(
         app_dir,
-        options=ViewSetOptions(app_name="notes", model_name="Note", use_multitenancy=True),
+        options=ViewSetOptions(
+            app_name="notes", model_name="Note", use_multitenancy=True
+        ),
         info=info,
     )
 

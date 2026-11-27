@@ -26,7 +26,12 @@ def _render(tmp_path: Path, *, multitenancy: bool) -> Path:
         crud=False,
         force=False,
     )
-    return render_project(ProjectContext.from_options(options)) / "apps" / "core" / "ownership.py"
+    return (
+        render_project(ProjectContext.from_options(options))
+        / "apps"
+        / "core"
+        / "ownership.py"
+    )
 
 
 @pytest.fixture
@@ -42,7 +47,9 @@ class FakeQuerySet:
         self.rows = rows
 
     def filter(self, **conditions: object) -> FakeQuerySet:
-        return FakeQuerySet([r for r in self.rows if all(r.get(k) == v for k, v in conditions.items())])
+        return FakeQuerySet(
+            [r for r in self.rows if all(r.get(k) == v for k, v in conditions.items())]
+        )
 
     def none(self) -> FakeQuerySet:
         return FakeQuerySet([])
@@ -92,13 +99,17 @@ def test_queryset_is_limited_to_the_requesting_user(Mixin) -> None:
 def test_the_owner_field_name_is_configurable(Mixin) -> None:
     class Base:
         def get_queryset(self) -> FakeQuerySet:
-            return FakeQuerySet([{"id": 1, "created_by": "alice"}, {"id": 2, "created_by": "bob"}])
+            return FakeQuerySet(
+                [{"id": 1, "created_by": "alice"}, {"id": 2, "created_by": "bob"}]
+            )
 
     class View(Mixin, Base):
         owner_field = "created_by"
 
     view = View()
-    view.request = SimpleNamespace(user=type("U", (str,), {"is_authenticated": True})("bob"))
+    view.request = SimpleNamespace(
+        user=type("U", (str,), {"is_authenticated": True})("bob")
+    )
 
     assert [r["id"] for r in view.get_queryset().rows] == [2]
 
@@ -148,5 +159,10 @@ def test_owner_mixin_first_composes_with_a_tenant_style_mixin(Mixin) -> None:
     right, wrong = Right(), Wrong()
     right.request = wrong.request = SimpleNamespace(user=user)
 
-    assert [r["id"] for r in right.get_queryset().rows] == [1]  # tenant a AND owner alice
-    assert [r["id"] for r in wrong.get_queryset().rows] == [1, 2]  # owner scoping silently lost
+    assert [r["id"] for r in right.get_queryset().rows] == [
+        1
+    ]  # tenant a AND owner alice
+    assert [r["id"] for r in wrong.get_queryset().rows] == [
+        1,
+        2,
+    ]  # owner scoping silently lost

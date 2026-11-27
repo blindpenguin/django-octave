@@ -30,10 +30,7 @@ def render_app(ctx: AppContext) -> Path:
     """Render app templates into ``ctx.app_dir``."""
     target = ctx.app_dir
     if target.exists() and any(target.iterdir()) and not ctx.force:
-        msg = (
-            f"App directory {target} already exists. "
-            "Use --force to replace it."
-        )
+        msg = f"App directory {target} already exists. Use --force to replace it."
         raise AppExistsError(msg)
 
     if ctx.use_multitenancy:

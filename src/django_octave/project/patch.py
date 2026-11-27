@@ -49,7 +49,10 @@ def patch_installed_apps(settings_path: Path, dotted_app: str) -> bool:
 def _app_urls_already_included(text: str, app_name: str) -> bool:
     """True if ``apps.<app>.urls`` is already in urlpatterns (legacy or shared)."""
     include_mod = f"apps.{app_name}.urls"
-    if f'include("{include_mod}")' not in text and f"include('{include_mod}')" not in text:
+    if (
+        f'include("{include_mod}")' not in text
+        and f"include('{include_mod}')" not in text
+    ):
         return False
     # Any include of this module counts (legacy api/<app>/ or shared api/).
     return True

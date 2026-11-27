@@ -10,7 +10,11 @@ from django_octave.rollback import GeneratedCodeError, rollback_on_error
 
 
 def _tree(root: Path) -> dict[str, bytes]:
-    return {str(p.relative_to(root)): p.read_bytes() for p in sorted(root.rglob("*")) if p.is_file()}
+    return {
+        str(p.relative_to(root)): p.read_bytes()
+        for p in sorted(root.rglob("*"))
+        if p.is_file()
+    }
 
 
 @pytest.fixture
@@ -27,7 +31,9 @@ def test_success_keeps_the_changes(root: Path) -> None:
         (root / "apps" / "blog" / "views.py").write_text("x = 2\n", encoding="utf-8")
         (root / "apps" / "blog" / "new.py").write_text("z = 3\n", encoding="utf-8")
 
-    assert (root / "apps" / "blog" / "views.py").read_text(encoding="utf-8") == "x = 2\n"
+    assert (root / "apps" / "blog" / "views.py").read_text(
+        encoding="utf-8"
+    ) == "x = 2\n"
     assert (root / "apps" / "blog" / "new.py").is_file()
 
 
@@ -35,7 +41,9 @@ def test_exception_restores_modified_created_and_deleted_files(root: Path) -> No
     before = _tree(root)
 
     with pytest.raises(RuntimeError, match="boom"), rollback_on_error(root):
-        (root / "apps" / "blog" / "views.py").write_text("changed = True\n", encoding="utf-8")
+        (root / "apps" / "blog" / "views.py").write_text(
+            "changed = True\n", encoding="utf-8"
+        )
         (root / "apps" / "blog" / "created.py").write_text("n = 1\n", encoding="utf-8")
         (root / "apps" / "blog" / "models.py").unlink()
         (root / "apps" / "newapp").mkdir()
@@ -49,15 +57,25 @@ def test_exception_restores_modified_created_and_deleted_files(root: Path) -> No
 def test_an_unparsable_python_file_is_rolled_back_and_reported(root: Path) -> None:
     before = _tree(root)
 
-    with pytest.raises(GeneratedCodeError, match=r"apps/blog/views\.py does not parse"), rollback_on_error(root):
-        (root / "apps" / "blog" / "views.py").write_text("def broken(:\n", encoding="utf-8")
+    with (
+        pytest.raises(GeneratedCodeError, match=r"apps/blog/views\.py does not parse"),
+        rollback_on_error(root),
+    ):
+        (root / "apps" / "blog" / "views.py").write_text(
+            "def broken(:\n", encoding="utf-8"
+        )
 
     assert _tree(root) == before
 
 
 def test_a_new_unparsable_file_is_removed(root: Path) -> None:
-    with pytest.raises(GeneratedCodeError, match="permissions.py"), rollback_on_error(root):
-        (root / "apps" / "blog" / "permissions.py").write_text('x = "a" "\n', encoding="utf-8")
+    with (
+        pytest.raises(GeneratedCodeError, match="permissions.py"),
+        rollback_on_error(root),
+    ):
+        (root / "apps" / "blog" / "permissions.py").write_text(
+            'x = "a" "\n', encoding="utf-8"
+        )
 
     assert not (root / "apps" / "blog" / "permissions.py").exists()
 
@@ -65,12 +83,16 @@ def test_a_new_unparsable_file_is_removed(root: Path) -> None:
 def test_files_that_were_already_unparsable_and_untouched_do_not_fail_the_command(
     root: Path,
 ) -> None:
-    (root / "apps" / "blog" / "legacy.py").write_text("this is not python\n", encoding="utf-8")
+    (root / "apps" / "blog" / "legacy.py").write_text(
+        "this is not python\n", encoding="utf-8"
+    )
 
     with rollback_on_error(root):
         (root / "apps" / "blog" / "views.py").write_text("x = 5\n", encoding="utf-8")
 
-    assert (root / "apps" / "blog" / "views.py").read_text(encoding="utf-8") == "x = 5\n"
+    assert (root / "apps" / "blog" / "views.py").read_text(
+        encoding="utf-8"
+    ) == "x = 5\n"
 
 
 def test_non_python_files_are_not_parsed(root: Path) -> None:
@@ -81,7 +103,9 @@ def test_non_python_files_are_not_parsed(root: Path) -> None:
 
 
 @pytest.mark.parametrize("ignored", [".venv", "node_modules", "__pycache__", ".git"])
-def test_ignored_directories_are_neither_snapshotted_nor_touched(root: Path, ignored: str) -> None:
+def test_ignored_directories_are_neither_snapshotted_nor_touched(
+    root: Path, ignored: str
+) -> None:
     (root / ignored).mkdir()
     (root / ignored / "big.bin").write_bytes(b"1")
 

@@ -19,7 +19,9 @@ pytestmark = [pytest.mark.e2e, pytest.mark.skipif(not E2E_ENABLED, reason=SKIP_R
 
 
 @pytest.fixture(scope="module", params=["plain", "multitenant"])
-def project(request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory) -> Path:
+def project(
+    request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory
+) -> Path:
     parent = tmp_path_factory.mktemp(f"octave-related-{request.param}")
     return build_project(parent, multitenancy=request.param == "multitenant")
 

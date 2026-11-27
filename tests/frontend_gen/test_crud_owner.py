@@ -43,12 +43,19 @@ def _project(tmp_path: Path, views: str) -> Path:
     (app / "urls.py").write_text(
         'router.register("notes", NoteViewSet, basename="note")\n', encoding="utf-8"
     )
-    render_frontend(root / "frontend", project_name="Proj", project_slug="proj", include_register=False)
+    render_frontend(
+        root / "frontend",
+        project_name="Proj",
+        project_slug="proj",
+        include_register=False,
+    )
     return root
 
 
 def _page(root: Path, name: str) -> str:
-    return (root / "frontend" / "src" / "pages" / "notes" / name).read_text(encoding="utf-8")
+    return (root / "frontend" / "src" / "pages" / "notes" / name).read_text(
+        encoding="utf-8"
+    )
 
 
 def test_discovery_reads_the_owner_field_of_a_scoped_viewset(tmp_path: Path) -> None:
@@ -59,12 +66,22 @@ def test_discovery_reads_the_owner_field_of_a_scoped_viewset(tmp_path: Path) -> 
     assert spec.owner_field == "owner"
 
 
-def test_discovery_uses_the_declared_attribute_and_defaults_to_owner(tmp_path: Path) -> None:
+def test_discovery_uses_the_declared_attribute_and_defaults_to_owner(
+    tmp_path: Path,
+) -> None:
     custom = SCOPED.replace('owner_field = "owner"', "owner_field = 'assignee'")
     no_attr = SCOPED.replace('    owner_field = "owner"\n', "")
 
-    assert discover_app_resources(_project(tmp_path / "a", custom), "notes")[0].owner_field == "assignee"
-    assert discover_app_resources(_project(tmp_path / "b", no_attr), "notes")[0].owner_field == "owner"
+    assert (
+        discover_app_resources(_project(tmp_path / "a", custom), "notes")[0].owner_field
+        == "assignee"
+    )
+    assert (
+        discover_app_resources(_project(tmp_path / "b", no_attr), "notes")[
+            0
+        ].owner_field
+        == "owner"
+    )
 
 
 def test_a_plain_viewset_has_no_owner_field(tmp_path: Path) -> None:
@@ -114,7 +131,9 @@ def test_rendered_pages_show_the_owner_but_do_not_edit_it(tmp_path: Path) -> Non
     assert "owner" not in _page(root, "ListView.vue").replace("primaryLabel", "")
 
 
-def test_without_owner_scoping_the_forms_still_contain_the_owner(tmp_path: Path) -> None:
+def test_without_owner_scoping_the_forms_still_contain_the_owner(
+    tmp_path: Path,
+) -> None:
     root = _project(tmp_path, PLAIN)
     (spec,) = discover_app_resources(root, "notes")
     enriched, _ = enrich_resource(root, spec)
@@ -125,7 +144,9 @@ def test_without_owner_scoping_the_forms_still_contain_the_owner(tmp_path: Path)
     assert "owner" in _page(root, "EditView.vue")
 
 
-@pytest.mark.parametrize("page", ["CreateView.vue", "EditView.vue", "DetailView.vue", "ListView.vue"])
+@pytest.mark.parametrize(
+    "page", ["CreateView.vue", "EditView.vue", "DetailView.vue", "ListView.vue"]
+)
 def test_pages_for_owner_scoped_and_plain_resources_share_structure(
     tmp_path: Path, page: str
 ) -> None:

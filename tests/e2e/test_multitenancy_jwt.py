@@ -52,7 +52,10 @@ def project(tmp_path_factory: pytest.TempPathFactory) -> Path:
     _cli("add", "notes", "--path", str(root))
     _cli("add-test", "notes", "Note", "--path", str(root))
     shutil.copy(root / ".env.example", root / ".env")
-    for step in (["uv", "sync"], ["uv", "run", "python", "manage.py", "makemigrations"]):
+    for step in (
+        ["uv", "sync"],
+        ["uv", "run", "python", "manage.py", "makemigrations"],
+    ):
         done = _run(step, root)
         assert done.returncode == 0, done.stdout + done.stderr
     return root

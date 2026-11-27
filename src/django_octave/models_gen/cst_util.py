@@ -18,9 +18,7 @@ _REGISTER_RE = re.compile(
 )
 
 
-_FROM_IMPORT_RE = re.compile(
-    r"^from\s+(\S+)\s+import\s+(.+)$"
-)
+_FROM_IMPORT_RE = re.compile(r"^from\s+(\S+)\s+import\s+(.+)$")
 
 
 def coalesce_from_imports(source: str) -> str:
@@ -286,9 +284,7 @@ def ensure_class_before(path: Path, class_name: str, before_class: str) -> bool:
     body = list(module.body)
     node = body.pop(src_idx)
     # After pop, before_idx shifts if src was before it — but src was after.
-    before_idx = _top_level_class_index(
-        module.with_changes(body=body), before_class
-    )
+    before_idx = _top_level_class_index(module.with_changes(body=body), before_class)
     if before_idx is None:
         body.append(node)
     else:
@@ -464,7 +460,9 @@ def set_class_attribute(
     try:
         value = cst.parse_expression(value_source)
     except cst.ParserSyntaxError as exc:
-        raise ModelWriteError(f"Invalid value {value_source!r} for {attr}: {exc}") from exc
+        raise ModelWriteError(
+            f"Invalid value {value_source!r} for {attr}: {exc}"
+        ) from exc
     changed = False
 
     class _Edit(cst.CSTTransformer):
@@ -478,7 +476,9 @@ def set_class_attribute(
             for i, statement in enumerate(body):
                 if _assigned_name(statement) == attr:
                     assign = statement.body[0]  # type: ignore[union-attr]
-                    if cst.Module([]).code_for_node(assign.value) == cst.Module([]).code_for_node(value):
+                    if cst.Module([]).code_for_node(assign.value) == cst.Module(
+                        []
+                    ).code_for_node(value):
                         return updated_node
                     body[i] = statement.with_changes(  # type: ignore[union-attr]
                         body=[assign.with_changes(value=value)]
@@ -501,7 +501,9 @@ def set_class_attribute(
                         at = 1
             body.insert(at, new_statement)
             changed = True
-            return updated_node.with_changes(body=updated_node.body.with_changes(body=body))
+            return updated_node.with_changes(
+                body=updated_node.body.with_changes(body=body)
+            )
 
     updated = module.visit(_Edit())
     if changed:
@@ -585,9 +587,16 @@ def ensure_read_only_field(path: Path, class_name: str, field: str) -> str:
                     return updated_node
                 container = assign.value
                 assert isinstance(container, cst.Tuple | cst.List)
-                elements = [*container.elements, cst.Element(value=cst.SimpleString(f'"{field}"'))]
+                elements = [
+                    *container.elements,
+                    cst.Element(value=cst.SimpleString(f'"{field}"')),
+                ]
                 meta_body[i] = statement.with_changes(
-                    body=[assign.with_changes(value=container.with_changes(elements=elements))]
+                    body=[
+                        assign.with_changes(
+                            value=container.with_changes(elements=elements)
+                        )
+                    ]
                 )
                 break
             else:
@@ -603,8 +612,12 @@ def ensure_read_only_field(path: Path, class_name: str, field: str) -> str:
                 meta_body.insert(at, statement)
 
             result = "added"
-            body[meta_index] = meta.with_changes(body=meta.body.with_changes(body=meta_body))
-            return updated_node.with_changes(body=updated_node.body.with_changes(body=body))
+            body[meta_index] = meta.with_changes(
+                body=meta.body.with_changes(body=meta_body)
+            )
+            return updated_node.with_changes(
+                body=updated_node.body.with_changes(body=body)
+            )
 
     updated = module.visit(_Edit())
     if not found_class:

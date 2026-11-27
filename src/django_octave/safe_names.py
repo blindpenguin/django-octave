@@ -20,7 +20,9 @@ PROJECT_NAME_RE = re.compile(r"^[^\W_][\w .\-]{0,63}$")
 PROJECT_SLUG_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 """Package-name style identifier (used in ``package.json`` and similar)."""
 
-RULE = "use 1-64 letters, digits, spaces, '.', '-' or '_', starting with a letter or digit"
+RULE = (
+    "use 1-64 letters, digits, spaces, '.', '-' or '_', starting with a letter or digit"
+)
 
 
 class InvalidProjectNameError(OctaveError, ValueError):
@@ -53,13 +55,19 @@ OWNER_ATTR_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}")
 URL_PATH_RE = re.compile(r"[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*")
 URL_NAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}")
 
-_TAG_RULE = "use 1-64 letters, digits, spaces, '.', '-' or '_', starting with a letter or digit"
+_TAG_RULE = (
+    "use 1-64 letters, digits, spaces, '.', '-' or '_', starting with a letter or digit"
+)
 _OWNER_ATTR_RULE = "use a Python identifier of up to 64 ASCII letters, digits or '_' that is not a keyword"
-_URL_PATH_RULE = "use up to 64 letters, digits, '-' or '_', optionally separated by single '/'"
+_URL_PATH_RULE = (
+    "use up to 64 letters, digits, '-' or '_', optionally separated by single '/'"
+)
 _URL_NAME_RULE = "use 1-64 letters, digits, '-' or '_', starting with a letter or digit"
 
 
-def _check(option: str, raw: str, pattern: re.Pattern[str], rule: str, *, max_len: int = 64) -> str:
+def _check(
+    option: str, raw: str, pattern: re.Pattern[str], rule: str, *, max_len: int = 64
+) -> str:
     value = raw.strip()
     if len(value) > max_len or pattern.fullmatch(value) is None:
         msg = f"Invalid {option} {raw!r}: {rule}."

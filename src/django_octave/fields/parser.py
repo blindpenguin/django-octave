@@ -59,9 +59,7 @@ _TEXT_TYPES = frozenset({"char", "text", "email", "url", "slug"})
 _FIELD_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _RELATED_TO_RE = re.compile(r"^([A-Z][A-Za-z0-9_]*)(\.[A-Z][A-Za-z0-9_]*)?$")
 # app_label.Model — app_label is snake_case
-_RELATED_TO_APP_RE = re.compile(
-    r"^([a-z][a-z0-9_]*)\.([A-Z][A-Za-z0-9_]*)$"
-)
+_RELATED_TO_APP_RE = re.compile(r"^([a-z][a-z0-9_]*)\.([A-Z][A-Za-z0-9_]*)$")
 _RELATED_NAME_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}")
 _RELATED_NAME_RULE = (
     "use '+' (no reverse relation) or an identifier of up to 64 ASCII letters, digits "
@@ -329,7 +327,9 @@ def split_compact_fields(raw: str) -> list[str]:
     text = raw.strip()
     if not text:
         return []
-    return [part.strip() for part in _COMPACT_FIELD_SPLIT_RE.split(text) if part.strip()]
+    return [
+        part.strip() for part in _COMPACT_FIELD_SPLIT_RE.split(text) if part.strip()
+    ]
 
 
 def parse_fields(raw_fields: list[str] | None) -> list[FieldSpec]:

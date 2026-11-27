@@ -97,14 +97,10 @@ def test_parse_bad_to() -> None:
 
 def test_str_field_name_prefers_labels_over_text() -> None:
     assert (
-        str_field_name(
-            parse_fields(["body:text", "note:char:max=120:blank"])
-        )
-        == "note"
+        str_field_name(parse_fields(["body:text", "note:char:max=120:blank"])) == "note"
     )
     assert (
-        str_field_name(parse_fields(["body:text", "subject:char:max=200"]))
-        == "subject"
+        str_field_name(parse_fields(["body:text", "subject:char:max=200"])) == "subject"
     )
     assert str_field_name(parse_fields(["title:char", "body:text"])) == "title"
     assert str_field_name(parse_fields(["body:text"])) == "body"
@@ -119,7 +115,7 @@ UUID_TEXT = "123e4567-e89b-12d3-a456-426614174000"
     [
         ("title:char:default=hello", "hello"),
         ("title:char:default=", ""),
-        ("title:char:default=it's \"quoted\"", "it's \"quoted\""),
+        ('title:char:default=it\'s "quoted"', 'it\'s "quoted"'),
         ("n:int:default=7", "7"),
         ("n:int:default=-3", "-3"),
         ("ok:bool:default=yes", "true"),
@@ -181,7 +177,17 @@ def test_parse_field_name_keyword_message(name: str) -> None:
 
 @pytest.mark.parametrize(
     "name",
-    ["save", "delete", "clean", "full_clean", "validate_unique", "refresh_from_db", "from_db", "check", "serializable_value"],
+    [
+        "save",
+        "delete",
+        "clean",
+        "full_clean",
+        "validate_unique",
+        "refresh_from_db",
+        "from_db",
+        "check",
+        "serializable_value",
+    ],
 )
 def test_parse_field_name_model_api_rejected(name: str) -> None:
     with pytest.raises(FieldParseError, match="shadow a Django model method"):
@@ -199,7 +205,9 @@ def test_parse_field_reserved_message_unchanged() -> None:
 
 
 def test_parse_default_with_colon_gets_hint() -> None:
-    with pytest.raises(FieldParseError, match="values containing ':' are not supported"):
+    with pytest.raises(
+        FieldParseError, match="values containing ':' are not supported"
+    ):
         parse_field("opens:char:default=12:30")
 
 
@@ -220,7 +228,9 @@ def test_parse_non_integer_option_is_a_parse_error(option: str) -> None:
 
 @pytest.mark.parametrize("type_key", ["fk", "o2o", "m2m"])
 @pytest.mark.parametrize("value", ["owned_notes", "_hidden", "a1", "x" * 64])
-def test_parse_related_name_identifier_on_relation_types(type_key: str, value: str) -> None:
+def test_parse_related_name_identifier_on_relation_types(
+    type_key: str, value: str
+) -> None:
     spec = parse_field(f"owner:{type_key}:to=users.User:related_name={value}")
 
     assert spec.related_name == value
@@ -249,7 +259,9 @@ def test_parse_related_name_defaults_to_none(declaration: str) -> None:
     ],
 )
 def test_parse_related_name_rejected_on_non_relation_types(declaration: str) -> None:
-    with pytest.raises(FieldParseError, match=r"related_name= is only valid for fk/o2o/m2m"):
+    with pytest.raises(
+        FieldParseError, match=r"related_name= is only valid for fk/o2o/m2m"
+    ):
         parse_field(declaration)
 
 

@@ -24,7 +24,10 @@ from .helpers import cli, run
 def _docker_available() -> bool:
     if shutil.which("docker") is None:
         return False
-    return subprocess.run(["docker", "info"], capture_output=True, check=False).returncode == 0  # noqa: S607
+    return (
+        subprocess.run(["docker", "info"], capture_output=True, check=False).returncode
+        == 0
+    )  # noqa: S607
 
 
 pytestmark = [
@@ -40,7 +43,9 @@ DATABASES = ["sqlite", "postgres", "mariadb"]
 TAG_PREFIX = "octave-e2e"
 
 
-def _docker(*args: str, cwd: Path | None = None, timeout: int = 900) -> subprocess.CompletedProcess[str]:
+def _docker(
+    *args: str, cwd: Path | None = None, timeout: int = 900
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(  # noqa: S603
         ["docker", *args],  # noqa: S607
         cwd=cwd,
@@ -56,7 +61,9 @@ def _sh(image: str, command: str) -> subprocess.CompletedProcess[str]:
 
 
 @pytest.fixture(scope="module")
-def built(tmp_path_factory: pytest.TempPathFactory) -> Iterator[dict[str, tuple[Path, str]]]:
+def built(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Iterator[dict[str, tuple[Path, str]]]:
     """Generate one Docker-enabled project per database and build its default image."""
     images: dict[str, tuple[Path, str]] = {}
     try:
@@ -95,8 +102,12 @@ def test_image_has_no_dev_dependencies_and_no_secret_in_its_environment(
 ) -> None:
     _, tag = built[database]
 
-    assert "No module named 'pytest'" in _sh(tag, "python -c 'import pytest' 2>&1").stdout
-    env = _docker("image", "inspect", tag, "--format", "{{range .Config.Env}}{{println .}}{{end}}")
+    assert (
+        "No module named 'pytest'" in _sh(tag, "python -c 'import pytest' 2>&1").stdout
+    )
+    env = _docker(
+        "image", "inspect", tag, "--format", "{{range .Config.Env}}{{println .}}{{end}}"
+    )
     assert "DJANGO_SECRET_KEY" not in env.stdout
     assert "DATABASE_URL" not in env.stdout
     cmd = _docker("image", "inspect", tag, "--format", "{{json .Config.Cmd}}").stdout
@@ -173,7 +184,9 @@ def test_dev_target_still_builds_with_uv_for_compose(
         _docker("rmi", "-f", tag)
 
 
-def test_build_uses_the_lock_file_when_present(built: dict[str, tuple[Path, str]]) -> None:
+def test_build_uses_the_lock_file_when_present(
+    built: dict[str, tuple[Path, str]],
+) -> None:
     root, _ = built["sqlite"]
     locked = run(["uv", "lock"], root)
     assert locked.returncode == 0, locked.stdout + locked.stderr

@@ -65,9 +65,9 @@ def test_scaffold_force_overwrites(tmp_path: Path) -> None:
     scaffold_frontend(tmp_path, include_register=True, force=True)
     assert not marker.exists()
     assert (tmp_path / "frontend" / "src" / "pages" / "RegisterView.vue").is_file()
-    assert "demo-frontend" in (
-        tmp_path / "frontend" / "package.json"
-    ).read_text(encoding="utf-8")
+    assert "demo-frontend" in (tmp_path / "frontend" / "package.json").read_text(
+        encoding="utf-8"
+    )
 
 
 def _write_readme(root: Path, title_line: str) -> None:
@@ -75,7 +75,9 @@ def _write_readme(root: Path, title_line: str) -> None:
 
 
 def test_display_name_uses_a_safe_readme_title(tmp_path: Path) -> None:
-    (tmp_path / "pyproject.toml").write_text('[project]\nname = "demo"\n', encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "demo"\n', encoding="utf-8"
+    )
     _write_readme(tmp_path, "# My Shop 2.0")
 
     assert project_display_name(tmp_path) == "My Shop 2.0"
@@ -83,24 +85,37 @@ def test_display_name_uses_a_safe_readme_title(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize(
     "title",
-    ['My "Shop"', "Bob's Shop", "{{ 1 + 1 }}", "<b>Shop</b>", 'a" + __import__("os") + "b', "x" * 65],
+    [
+        'My "Shop"',
+        "Bob's Shop",
+        "{{ 1 + 1 }}",
+        "<b>Shop</b>",
+        'a" + __import__("os") + "b',
+        "x" * 65,
+    ],
 )
 def test_display_name_falls_back_to_the_slug_for_an_unsafe_readme_title(
     tmp_path: Path, title: str
 ) -> None:
-    (tmp_path / "pyproject.toml").write_text('[project]\nname = "demo"\n', encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "demo"\n', encoding="utf-8"
+    )
     _write_readme(tmp_path, f"# {title}")
 
     assert project_display_name(tmp_path) == "demo"
 
 
 def test_display_name_without_readme_is_the_slug(tmp_path: Path) -> None:
-    (tmp_path / "pyproject.toml").write_text('[project]\nname = "demo"\n', encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "demo"\n', encoding="utf-8"
+    )
 
     assert project_display_name(tmp_path) == "demo"
 
 
-def test_slug_ignores_an_unsafe_pyproject_name_and_uses_the_directory(tmp_path: Path) -> None:
+def test_slug_ignores_an_unsafe_pyproject_name_and_uses_the_directory(
+    tmp_path: Path,
+) -> None:
     root = tmp_path / "My Project"
     root.mkdir()
     (root / "pyproject.toml").write_text(
@@ -110,32 +125,46 @@ def test_slug_ignores_an_unsafe_pyproject_name_and_uses_the_directory(tmp_path: 
     assert project_slug(root) == "my_project"
 
 
-def test_slug_falls_back_when_the_directory_has_no_usable_characters(tmp_path: Path) -> None:
+def test_slug_falls_back_when_the_directory_has_no_usable_characters(
+    tmp_path: Path,
+) -> None:
     root = tmp_path / "日本語"
     root.mkdir()
 
     assert project_slug(root) == "project"
 
 
-def test_scaffold_with_a_hostile_readme_title_produces_valid_json(tmp_path: Path) -> None:
-    (tmp_path / "pyproject.toml").write_text('[project]\nname = "demo"\n', encoding="utf-8")
+def test_scaffold_with_a_hostile_readme_title_produces_valid_json(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "demo"\n', encoding="utf-8"
+    )
     _write_readme(tmp_path, '# Bad", "x": "y')
 
     scaffold_frontend(tmp_path, include_register=False)
 
-    package = json.loads((tmp_path / "frontend" / "package.json").read_text(encoding="utf-8"))
+    package = json.loads(
+        (tmp_path / "frontend" / "package.json").read_text(encoding="utf-8")
+    )
     assert package["name"] == "demo-frontend"
     index = (tmp_path / "frontend" / "index.html").read_text(encoding="utf-8")
     assert "<title>demo</title>" in index
 
 
-def test_scaffold_with_a_hostile_pyproject_name_produces_valid_json(tmp_path: Path) -> None:
+def test_scaffold_with_a_hostile_pyproject_name_produces_valid_json(
+    tmp_path: Path,
+) -> None:
     root = tmp_path / "proj"
     root.mkdir()
-    (root / "pyproject.toml").write_text('[project]\nname = "x\\", \\"evil\\": \\"1"\n', encoding="utf-8")
+    (root / "pyproject.toml").write_text(
+        '[project]\nname = "x\\", \\"evil\\": \\"1"\n', encoding="utf-8"
+    )
 
     scaffold_frontend(root, include_register=False)
 
-    package = json.loads((root / "frontend" / "package.json").read_text(encoding="utf-8"))
+    package = json.loads(
+        (root / "frontend" / "package.json").read_text(encoding="utf-8")
+    )
     assert package["name"] == "proj-frontend"
     assert "evil" not in package

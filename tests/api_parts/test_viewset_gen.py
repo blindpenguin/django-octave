@@ -19,7 +19,7 @@ from django_octave.api_parts.viewset_gen import (
 )
 from django_octave.inspect.model_fields import inspect_model_fields
 
-SAMPLE = '''
+SAMPLE = """
 from django.db import models
 from apps.core.models import TimeStampedModel
 
@@ -27,7 +27,7 @@ class Post(TimeStampedModel):
     title = models.CharField(max_length=100)
     published = models.BooleanField(default=False)
     body = models.TextField()
-'''
+"""
 
 
 def test_validate_permission() -> None:

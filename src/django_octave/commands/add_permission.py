@@ -147,7 +147,9 @@ def add_permission_cmd(
     if wired:
         lines.append(f"- Wired to `{wired}` (`append={options.append}`)")
     lines.extend(f"- {note}" for note in scoping_notes)
-    next_steps = [f"django-octave add-viewset {app} YourModel --permission {name} --force"]
+    next_steps = [
+        f"django-octave add-viewset {app} YourModel --permission {name} --force"
+    ]
     lines.extend(["", "## Next steps", ""])
     if preset_name == "owner" and not wired:
         lines.extend(

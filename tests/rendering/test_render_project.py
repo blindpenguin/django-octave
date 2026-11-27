@@ -62,7 +62,9 @@ def test_render_sqlite_baseline(tmp_path: Path) -> None:
 
 def test_render_docker_and_multitenancy(tmp_path: Path) -> None:
     ctx = ProjectContext.from_options(
-        _options(tmp_path, database=DatabaseChoice.POSTGRES, docker=True, multitenancy=True)
+        _options(
+            tmp_path, database=DatabaseChoice.POSTGRES, docker=True, multitenancy=True
+        )
     )
     target = render_project(ctx)
     assert (target / "Dockerfile").is_file()
@@ -186,7 +188,9 @@ def test_render_auth_throttle_module_is_always_generated(
         ProjectContext.from_options(_options(tmp_path, multitenancy=multitenancy))
     )
 
-    throttling = (target / "apps" / "core" / "throttling.py").read_text(encoding="utf-8")
+    throttling = (target / "apps" / "core" / "throttling.py").read_text(
+        encoding="utf-8"
+    )
 
     assert "class AuthRateThrottle(AnonRateThrottle)" in throttling
     assert 'scope = "auth"' in throttling
@@ -216,7 +220,9 @@ def test_render_settings_define_auth_rate_and_proxy_count(tmp_path: Path) -> Non
 
 
 def test_render_tenant_related_name_includes_the_app_label(tmp_path: Path) -> None:
-    target = render_project(ProjectContext.from_options(_options(tmp_path, multitenancy=True)))
+    target = render_project(
+        ProjectContext.from_options(_options(tmp_path, multitenancy=True))
+    )
 
     models = (target / "apps" / "core" / "models.py").read_text(encoding="utf-8")
 
@@ -225,7 +231,9 @@ def test_render_tenant_related_name_includes_the_app_label(tmp_path: Path) -> No
 
 
 def _dockerfile(tmp_path: Path, database: DatabaseChoice) -> str:
-    ctx = ProjectContext.from_options(_options(tmp_path, database=database, docker=True))
+    ctx = ProjectContext.from_options(
+        _options(tmp_path, database=database, docker=True)
+    )
     return (render_project(ctx) / "Dockerfile").read_text(encoding="utf-8")
 
 
@@ -246,7 +254,9 @@ def test_render_dockerfile_stage_order_puts_runtime_last(
     assert stages == ["dev", "builder", "runtime"]
 
 
-def test_render_dockerfile_runtime_stage_is_minimal_and_non_root(tmp_path: Path) -> None:
+def test_render_dockerfile_runtime_stage_is_minimal_and_non_root(
+    tmp_path: Path,
+) -> None:
     runtime = _stage(_dockerfile(tmp_path, DatabaseChoice.SQLITE), "runtime")
 
     assert "curl" not in runtime
@@ -268,7 +278,9 @@ def test_render_dockerfile_builder_installs_without_dev_and_honours_the_lock(
     assert "[ -f uv.lock ]" in builder
 
 
-def test_render_dockerfile_collectstatic_uses_build_only_variables(tmp_path: Path) -> None:
+def test_render_dockerfile_collectstatic_uses_build_only_variables(
+    tmp_path: Path,
+) -> None:
     dockerfile = _dockerfile(tmp_path, DatabaseChoice.SQLITE)
     runtime = _stage(dockerfile, "runtime")
 
@@ -294,7 +306,9 @@ def test_render_dockerfile_dev_stage_keeps_uv_run_for_compose(tmp_path: Path) ->
     assert "USER app" in dev
 
 
-def test_render_dockerfile_mariadb_dev_libs_only_in_build_stages(tmp_path: Path) -> None:
+def test_render_dockerfile_mariadb_dev_libs_only_in_build_stages(
+    tmp_path: Path,
+) -> None:
     dockerfile = _dockerfile(tmp_path, DatabaseChoice.MARIADB)
 
     assert "default-libmysqlclient-dev" in _stage(dockerfile, "builder")
@@ -323,7 +337,9 @@ def test_render_dev_compose_builds_the_dev_target(tmp_path: Path) -> None:
     assert "command: uv run python manage.py runserver" in dev  # bind mount + uv
 
 
-def test_render_prod_compose_uses_the_image_command_and_default_stage(tmp_path: Path) -> None:
+def test_render_prod_compose_uses_the_image_command_and_default_stage(
+    tmp_path: Path,
+) -> None:
     ctx = ProjectContext.from_options(_options(tmp_path, docker=True))
 
     prod = (render_project(ctx) / "docker-compose.prod.yml").read_text(encoding="utf-8")
@@ -359,7 +375,9 @@ def test_next_steps_for_docker_mention_the_lock_file_and_hosts(
 
 
 @pytest.mark.parametrize("multitenancy", [False, True])
-def test_render_readme_states_the_default_access_model(tmp_path: Path, multitenancy: bool) -> None:
+def test_render_readme_states_the_default_access_model(
+    tmp_path: Path, multitenancy: bool
+) -> None:
     ctx = ProjectContext.from_options(_options(tmp_path, multitenancy=multitenancy))
 
     readme = (render_project(ctx) / "README.md").read_text(encoding="utf-8")

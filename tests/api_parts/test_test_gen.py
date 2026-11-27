@@ -19,7 +19,7 @@ from django_octave.api_parts.test_gen import (
 )
 from django_octave.inspect.model_fields import inspect_model_fields
 
-SAMPLE = '''
+SAMPLE = """
 from django.db import models
 from apps.core.models import TimeStampedModel
 
@@ -27,15 +27,15 @@ class Post(TimeStampedModel):
     title = models.CharField(max_length=100)
     body = models.TextField()
     published = models.BooleanField(default=False)
-'''
+"""
 
-TENANT = '''
+TENANT = """
 from django.db import models
 from apps.core.models import TenantAwareModel
 
 class Item(TenantAwareModel):
     name = models.CharField(max_length=50)
-'''
+"""
 
 
 def test_build_model_factory_source() -> None:
@@ -83,9 +83,7 @@ def test_write_tests_api_and_force(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     opts = StubOptions(app_name="blog", model_name="Post")
-    paths = write_tests(
-        tmp_path, app_dir, options=opts, use_multitenancy=False
-    )
+    paths = write_tests(tmp_path, app_dir, options=opts, use_multitenancy=False)
     assert any("blog_post.py" in str(p) for p in paths)
     assert any("test_blog_post_api.py" in str(p) for p in paths)
     assert (tmp_path / "tests" / "factories" / "user.py").exists()
@@ -131,14 +129,14 @@ def test_build_user_factory_uses_django_password() -> None:
     assert "PostGenerationMethodCall(" not in src
 
 
-TENANT_SAMPLE = '''
+TENANT_SAMPLE = """
 from django.db import models
 from apps.core.models import TenantAwareModel
 
 
 class Note(TenantAwareModel):
     name = models.CharField(max_length=255)
-'''
+"""
 
 
 def test_factory_for_tenant_aware_model_has_tenant_subfactory() -> None:
@@ -170,7 +168,9 @@ def test_tenant_api_tests_pass_owner_kwarg_to_every_factory_call() -> None:
     ast.parse(src)
 
 
-def test_ensure_test_fixtures_adds_tenant_fixtures_only_when_asked(tmp_path: Path) -> None:
+def test_ensure_test_fixtures_adds_tenant_fixtures_only_when_asked(
+    tmp_path: Path,
+) -> None:
     plain = tmp_path / "plain" / "conftest.py"
     scoped = tmp_path / "scoped" / "conftest.py"
     plain.parent.mkdir()

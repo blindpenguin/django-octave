@@ -66,9 +66,7 @@ def main() -> None:
         if result not in (None, 0):
             _fail(f"cli --help returned {result!r}")
 
-    print(
-        f"smoke_dist: OK (django_octave at {package_dir}, {len(j2)} templates)"
-    )
+    print(f"smoke_dist: OK (django_octave at {package_dir}, {len(j2)} templates)")
 
 
 if __name__ == "__main__":

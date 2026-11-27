@@ -70,7 +70,11 @@ def test_render_crud_pages(tmp_path: Path) -> None:
     assert "/api/categories/" in create
     assert "from '../../api/client'" in create
     assert "unwrapList" in create
-    assert ":label=\"'Title'\"" in create or "label=\"'Title'\"" in create or "'Title'" in create
+    assert (
+        ":label=\"'Title'\"" in create
+        or "label=\"'Title'\"" in create
+        or "'Title'" in create
+    )
     list_view = (page_dir / "ListView.vue").read_text(encoding="utf-8")
     assert "UTable" not in list_view
     assert "primaryLabel" in list_view

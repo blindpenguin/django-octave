@@ -75,7 +75,9 @@ def resolve_new_project_options(
 
     if docker is None:
         if interactive:
-            docker = Confirm.ask("Include Docker (dev + prod)?", default=False, console=console)
+            docker = Confirm.ask(
+                "Include Docker (dev + prod)?", default=False, console=console
+            )
         else:
             missing.append("--docker / --no-docker")
 

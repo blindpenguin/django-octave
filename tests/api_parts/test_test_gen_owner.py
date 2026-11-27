@@ -61,7 +61,9 @@ def test_the_declared_owner_field_is_used_everywhere() -> None:
     assert "created.created_by == user" in source
 
 
-def test_the_create_test_skips_instead_of_guessing_when_related_objects_are_needed() -> None:
+def test_the_create_test_skips_instead_of_guessing_when_related_objects_are_needed() -> (
+    None
+):
     source = _source(owner_field="owner")
 
     assert "pytest.skip(" in source
@@ -104,8 +106,19 @@ def _project(tmp_path: Path, *, wire_owner: bool) -> Path:
     ]  # fmt: skip
     if wire_owner:
         steps.append(
-            ["add-permission", "notes", "IsOwner", "--preset", "owner", "--owner-attr", "owner",
-             "--viewset", "Note", "--path", str(root)]
+            [
+                "add-permission",
+                "notes",
+                "IsOwner",
+                "--preset",
+                "owner",
+                "--owner-attr",
+                "owner",
+                "--viewset",
+                "Note",
+                "--path",
+                str(root),
+            ]
         )
     for args in steps:
         result = runner.invoke(app, args)
@@ -113,19 +126,29 @@ def _project(tmp_path: Path, *, wire_owner: bool) -> Path:
     return root
 
 
-def test_add_test_writes_owner_tests_only_for_owner_scoped_viewsets(tmp_path: Path) -> None:
+def test_add_test_writes_owner_tests_only_for_owner_scoped_viewsets(
+    tmp_path: Path,
+) -> None:
     scoped = _project(tmp_path / "s", wire_owner=True)
     plain = _project(tmp_path / "p", wire_owner=False)
 
     for root in (scoped, plain):
-        result = runner.invoke(app, ["add-test", "notes", "Note", "--force", "--path", str(root)])
+        result = runner.invoke(
+            app, ["add-test", "notes", "Note", "--force", "--path", str(root)]
+        )
         assert result.exit_code == 0, result.output
 
-    scoped_tests = (scoped / "tests" / "test_notes_note_api.py").read_text(encoding="utf-8")
-    plain_tests = (plain / "tests" / "test_notes_note_api.py").read_text(encoding="utf-8")
+    scoped_tests = (scoped / "tests" / "test_notes_note_api.py").read_text(
+        encoding="utf-8"
+    )
+    plain_tests = (plain / "tests" / "test_notes_note_api.py").read_text(
+        encoding="utf-8"
+    )
     ast.parse(scoped_tests)
     ast.parse(plain_tests)
     for name in OWNER_TESTS:
         assert f"def {name}(" in scoped_tests
         assert name not in plain_tests
-    assert "NoteFactory(owner=user)" in scoped_tests  # smoke tests also create owned rows
+    assert (
+        "NoteFactory(owner=user)" in scoped_tests
+    )  # smoke tests also create owned rows

@@ -75,7 +75,9 @@ def test_write_permission_create_and_force(tmp_path: Path) -> None:
 def test_write_second_class(tmp_path: Path) -> None:
     write_permission(
         tmp_path,
-        options=PermissionOptions(app_name="blog", class_name="IsOwner", preset="owner"),
+        options=PermissionOptions(
+            app_name="blog", class_name="IsOwner", preset="owner"
+        ),
     )
     write_permission(
         tmp_path,
@@ -144,7 +146,9 @@ def test_wire_missing_viewset(tmp_path: Path) -> None:
 
 
 def test_tenant_member_docstring_names_the_mixin() -> None:
-    src = build_permission_class("IsTenantMember", preset="tenant_member", owner_attr="owner")
+    src = build_permission_class(
+        "IsTenantMember", preset="tenant_member", owner_attr="owner"
+    )
     assert "TenantScopedMixin" in src
     assert "TenantMiddleware" not in src
 

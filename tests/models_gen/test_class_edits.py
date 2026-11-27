@@ -39,13 +39,17 @@ def test_base_is_inserted_first(tmp_path: Path) -> None:
 
 
 def test_base_goes_before_an_existing_mixin_and_is_idempotent(tmp_path: Path) -> None:
-    path = _write(tmp_path, "class V(TenantScopedMixin, viewsets.ModelViewSet):\n    pass\n")
+    path = _write(
+        tmp_path, "class V(TenantScopedMixin, viewsets.ModelViewSet):\n    pass\n"
+    )
 
     assert ensure_class_base(path, "V", "OwnerScopedMixin") is True
     assert ensure_class_base(path, "V", "OwnerScopedMixin") is False
 
     text = _text(path)
-    assert "class V(OwnerScopedMixin, TenantScopedMixin, viewsets.ModelViewSet):" in text
+    assert (
+        "class V(OwnerScopedMixin, TenantScopedMixin, viewsets.ModelViewSet):" in text
+    )
     assert text.count("OwnerScopedMixin") == 1
 
 
@@ -102,7 +106,9 @@ def test_attribute_is_inserted_before_queryset(tmp_path: Path) -> None:
 
 
 def test_attribute_without_queryset_goes_after_the_docstring(tmp_path: Path) -> None:
-    path = _write(tmp_path, 'class V:\n    """Doc."""\n\n    def go(self):\n        pass\n')
+    path = _write(
+        tmp_path, 'class V:\n    """Doc."""\n\n    def go(self):\n        pass\n'
+    )
 
     set_class_attribute(path, "V", "owner_field", '"owner"')
 
@@ -155,7 +161,9 @@ def test_field_is_added_to_a_tuple_with_trailing_comma(tmp_path: Path) -> None:
     )
 
 
-def test_field_is_added_to_a_list_and_to_a_tuple_without_trailing_comma(tmp_path: Path) -> None:
+def test_field_is_added_to_a_list_and_to_a_tuple_without_trailing_comma(
+    tmp_path: Path,
+) -> None:
     for existing, expected in (
         ('["id"]', ["id", "owner"]),
         ('("id")', None),  # a parenthesised string is not a tuple: refuse to guess
@@ -174,7 +182,9 @@ def test_field_is_added_to_a_list_and_to_a_tuple_without_trailing_comma(tmp_path
 
 
 def test_field_already_read_only_is_left_alone(tmp_path: Path) -> None:
-    path = _write(tmp_path, SERIALIZER.replace('"created_at",)', '"created_at", "owner")'))
+    path = _write(
+        tmp_path, SERIALIZER.replace('"created_at",)', '"created_at", "owner")')
+    )
     before = path.read_text(encoding="utf-8")
 
     assert ensure_read_only_field(path, "NoteSerializer", "owner") == "present"
@@ -183,7 +193,9 @@ def test_field_already_read_only_is_left_alone(tmp_path: Path) -> None:
 
 
 def test_read_only_fields_is_created_when_absent(tmp_path: Path) -> None:
-    source = SERIALIZER.replace('        read_only_fields = ("id", "created_at",)\n', "")
+    source = SERIALIZER.replace(
+        '        read_only_fields = ("id", "created_at",)\n', ""
+    )
     path = _write(tmp_path, source)
 
     assert ensure_read_only_field(path, "NoteSerializer", "owner") == "added"

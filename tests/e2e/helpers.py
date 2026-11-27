@@ -100,7 +100,10 @@ def build_project(
     if configure is not None:
         configure(root)
     shutil.copy(root / ".env.example", root / ".env")
-    for step in (["uv", "sync"], ["uv", "run", "python", "manage.py", "makemigrations"]):
+    for step in (
+        ["uv", "sync"],
+        ["uv", "run", "python", "manage.py", "makemigrations"],
+    ):
         done = run(step, root)
         assert done.returncode == 0, done.stdout + done.stderr
     return root

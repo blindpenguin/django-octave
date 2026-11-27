@@ -72,9 +72,11 @@ class ProjectContext:
 
     @classmethod
     def from_options(cls, options: NewProjectOptions) -> ProjectContext:
-        name = validate_project_name(options.name)  # templates copy it into source files
+        name = validate_project_name(
+            options.name
+        )  # templates copy it into source files
         slug = normalize_slug(name)
-        target = (options.path.expanduser().resolve() / slug)
+        target = options.path.expanduser().resolve() / slug
         packages = list(versions.ALWAYS_ON_DEPENDENCIES) + database_dependencies(
             options.database
         )

@@ -29,14 +29,14 @@ def test_cross_app_subfactory() -> None:
         info=info,
     )
     assert (
-        'ingredient = factory.SubFactory('
+        "ingredient = factory.SubFactory("
         '"tests.factories.ingredients_ingredient.IngredientFactory")'
     ) in src
     assert "TODO: wire SubFactory" not in src
 
 
 def test_detect_allow_any() -> None:
-    views = '''
+    views = """
 class CategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
     queryset = Category.objects.all()
@@ -44,7 +44,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
 class RecipeViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     queryset = Recipe.objects.all()
-'''
+"""
     assert detect_viewset_allows_anonymous(views, "CategoryViewSet") is True
     assert detect_viewset_allows_anonymous(views, "RecipeViewSet") is False
 

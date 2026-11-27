@@ -146,7 +146,9 @@ def build_model_factory_source(
         "",
     ]
     if info.has_tenant_aware:
-        lines.insert(0, '    tenant = factory.SubFactory("tests.factories.tenant.TenantFactory")')
+        lines.insert(
+            0, '    tenant = factory.SubFactory("tests.factories.tenant.TenantFactory")'
+        )
     if lines:
         body.extend(lines)
     else:
@@ -247,7 +249,9 @@ def _build_api_test_source(
     snake = pascal_to_snake(model_name)
     stem = factory_module_stem(app_name, model_name)
     factory_name = factory_class_name(model_name)
-    kwargs = ", ".join(k for k in ("tenant=tenant" if tenant_aware else "", owner_kw) if k)
+    kwargs = ", ".join(
+        k for k in ("tenant=tenant" if tenant_aware else "", owner_kw) if k
+    )
     factory_call = f"{factory_name}({kwargs})"
     if anonymous_list_ok:
         list_anon = f'''@pytest.mark.django_db
@@ -387,11 +391,15 @@ def build_api_test_source(
         + "from tests.factories.user import UserFactory\n",
         1,
     )
-    return source.rstrip("\n") + "\n" + _owner_tests_source(
-        model_name=model_name,
-        factory_name=factory_name,
-        owner_field=owner_field,
-        tenant_aware=tenant_aware,
+    return (
+        source.rstrip("\n")
+        + "\n"
+        + _owner_tests_source(
+            model_name=model_name,
+            factory_name=factory_name,
+            owner_field=owner_field,
+            tenant_aware=tenant_aware,
+        )
     )
 
 
@@ -400,7 +408,11 @@ def _owner_tests_source(
 ) -> str:
     snake = pascal_to_snake(model_name)
     if tenant_aware:
-        client, args, manager = "tenant_client", "tenant_client, tenant, user", "all_objects"
+        client, args, manager = (
+            "tenant_client",
+            "tenant_client, tenant, user",
+            "all_objects",
+        )
         mine = f"{factory_name}(tenant=tenant, {owner_field}=user)"
         theirs = f"{factory_name}(tenant=tenant, {owner_field}=UserFactory())"
         other_args = "tenant_client, tenant"
@@ -533,7 +545,9 @@ def tenant_client(user, tenant):
 """
 
 
-def ensure_test_fixtures(conftest_path: Path, *, use_multitenancy: bool = False) -> bool:
+def ensure_test_fixtures(
+    conftest_path: Path, *, use_multitenancy: bool = False
+) -> bool:
     """Append missing api_client/user/auth_client (and tenant) fixtures.
 
     Return True if the file changed.
@@ -647,7 +661,9 @@ def write_tests(
                 tenant_aware=tenant_aware,
                 anonymous_list_ok=anonymous_ok,
                 owner_kw=_owner_factory_kw(info),
-                owner_field=viewset_owner_field(views_src, f"{options.model_name}ViewSet"),
+                owner_field=viewset_owner_field(
+                    views_src, f"{options.model_name}ViewSet"
+                ),
             ),
             encoding="utf-8",
         )

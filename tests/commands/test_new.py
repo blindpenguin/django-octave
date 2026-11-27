@@ -109,7 +109,9 @@ def test_new_force_help_says_generated_files_are_overwritten_and_rest_kept() -> 
     assert "everything else is kept" in text
 
 
-def test_new_force_overwrites_generated_files_and_keeps_the_rest(tmp_path: Path) -> None:
+def test_new_force_overwrites_generated_files_and_keeps_the_rest(
+    tmp_path: Path,
+) -> None:
     assert runner.invoke(app, _new_args(tmp_path)).exit_code == 0
     target = tmp_path / "cli_demo"
     (target / "notes.txt").write_text("mine", encoding="utf-8")
@@ -182,7 +184,9 @@ def test_new_accepts_awkward_names_and_every_generated_file_parses(
     for path in root.rglob("*.py"):
         ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
-    package = json.loads((root / "frontend" / "package.json").read_text(encoding="utf-8"))
+    package = json.loads(
+        (root / "frontend" / "package.json").read_text(encoding="utf-8")
+    )
     assert package["name"].endswith("-frontend")
     settings = (root / "config" / "settings" / "base.py").read_text(encoding="utf-8")
     assert f'"TITLE": "{name} API"' in settings  # the name is data, not code

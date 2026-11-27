@@ -48,9 +48,7 @@ def add_app(
     """Add a domain app with DRF API stubs under apps/."""
     from django_octave.prompts.add_app import resolve_add_app_options
 
-    options = resolve_add_app_options(
-        name=name, path=path, force=force, model=model
-    )
+    options = resolve_add_app_options(name=name, path=path, force=force, model=model)
     with handle_errors():
         project = detect_project(options.path)
         ctx = AppContext.build(

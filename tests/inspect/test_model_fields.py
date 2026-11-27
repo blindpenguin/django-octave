@@ -12,7 +12,7 @@ from django_octave.inspect.model_fields import (
 )
 from django_octave.models_gen.writer import ModelWriteError
 
-SAMPLE_TIMESTAMPED = '''
+SAMPLE_TIMESTAMPED = """
 from django.db import models
 from apps.core.models import TimeStampedModel
 
@@ -21,23 +21,23 @@ class Post(TimeStampedModel):
     published = models.BooleanField(default=False)
     body = models.TextField()
     views = models.IntegerField(default=0)
-'''
+"""
 
-SAMPLE_PLAIN = '''
+SAMPLE_PLAIN = """
 from django.db import models
 
 class Tag(models.Model):
     name = models.SlugField(max_length=50)
     email = models.EmailField()
-'''
+"""
 
-SAMPLE_TENANT = '''
+SAMPLE_TENANT = """
 from django.db import models
 from apps.core.models import TenantAwareModel
 
 class Item(TenantAwareModel):
     code = models.UUIDField()
-'''
+"""
 
 
 def test_inspect_timestamped_fields() -> None:
@@ -96,7 +96,7 @@ def test_missing_model_raises() -> None:
         inspect_model_fields(SAMPLE_PLAIN, "Missing")
 
 
-SAMPLE_RELATIONS = '''
+SAMPLE_RELATIONS = """
 from django.db import models
 from apps.core.models import TimeStampedModel
 
@@ -107,7 +107,7 @@ class Post(TimeStampedModel):
     title = models.CharField(max_length=100)
     author = models.ForeignKey("Author", on_delete=models.CASCADE)
     tags = models.ManyToManyField("Tag", blank=True)
-'''
+"""
 
 
 def test_inspect_relations() -> None:
@@ -120,7 +120,7 @@ def test_inspect_relations() -> None:
     assert "tags" not in filterable_names(info)
 
 
-SAMPLE_RELATED_NAMES = '''
+SAMPLE_RELATED_NAMES = """
 from django.db import models
 from apps.core.models import TimeStampedModel
 
@@ -131,7 +131,7 @@ class Note(TimeStampedModel):
         "users.User", on_delete=models.SET_NULL, related_name="+", null=True, blank=True
     )
     watchers = models.ManyToManyField("users.User", related_name="watched_notes", blank=True)
-'''
+"""
 
 
 def test_inspect_ignores_related_name_and_keeps_relations_and_flags() -> None:

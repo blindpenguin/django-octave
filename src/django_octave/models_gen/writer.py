@@ -60,7 +60,10 @@ def _ensure_imports(
     inserts: list[cst.SimpleStatementLine] = []
     if need_uuid and "import uuid" not in existing:
         inserts.append(cst.parse_statement("import uuid"))
-    if "from django.db import models" not in existing and "import models" not in existing:
+    if (
+        "from django.db import models" not in existing
+        and "import models" not in existing
+    ):
         inserts.append(cst.parse_statement("from django.db import models"))
     base = "TenantAwareModel" if use_multitenancy else "TimeStampedModel"
     import_line = f"from apps.core.models import {base}"
@@ -76,9 +79,7 @@ def _ensure_imports(
     for i, stmt in enumerate(body):
         if m.matches(
             stmt,
-            m.SimpleStatementLine(
-                body=[m.ImportFrom(module=m.Name("__future__"))]
-            ),
+            m.SimpleStatementLine(body=[m.ImportFrom(module=m.Name("__future__"))]),
         ):
             insert_at = i + 1
         elif m.matches(stmt, m.SimpleStatementLine(body=[m.ImportFrom() | m.Import()])):

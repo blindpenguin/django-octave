@@ -25,7 +25,9 @@ from django_octave.safe_names import (
         "a" * 64,
     ],
 )
-def test_project_name_accepts_letters_digits_spaces_dots_hyphens_underscores(name: str) -> None:
+def test_project_name_accepts_letters_digits_spaces_dots_hyphens_underscores(
+    name: str,
+) -> None:
     assert is_safe_project_name(name)
     assert validate_project_name(name) == name
 
@@ -83,6 +85,8 @@ def test_slug_accepts_package_style_names(slug: str) -> None:
     assert is_safe_slug(slug)
 
 
-@pytest.mark.parametrize("slug", ["", "_x", ".x", "-x", "a b", 'a"b', "a\nb", "a" * 65, "é"])
+@pytest.mark.parametrize(
+    "slug", ["", "_x", ".x", "-x", "a b", 'a"b', "a\nb", "a" * 65, "é"]
+)
 def test_slug_rejects_everything_else(slug: str) -> None:
     assert not is_safe_slug(slug)

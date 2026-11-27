@@ -22,9 +22,15 @@ from django_octave.safe_names import validate_owner_attr
 
 OWNER_IMPORT = "from apps.core.ownership import OwnerScopedMixin\n"
 
-_OWNER_ATTR_RE = re.compile(r'^\s*owner_attr\s*=\s*["\']([A-Za-z_][A-Za-z0-9_]*)["\']', re.M)
-_OWNER_FIELD_RE = re.compile(r'^\s*owner_field\s*=\s*["\']([A-Za-z_][A-Za-z0-9_]*)["\']', re.M)
-_QUERYSET_MODEL_RE = re.compile(r"queryset\s*=\s*(\w+)\.(?:objects|all_objects|_default_manager)")
+_OWNER_ATTR_RE = re.compile(
+    r'^\s*owner_attr\s*=\s*["\']([A-Za-z_][A-Za-z0-9_]*)["\']', re.M
+)
+_OWNER_FIELD_RE = re.compile(
+    r'^\s*owner_field\s*=\s*["\']([A-Za-z_][A-Za-z0-9_]*)["\']', re.M
+)
+_QUERYSET_MODEL_RE = re.compile(
+    r"queryset\s*=\s*(\w+)\.(?:objects|all_objects|_default_manager)"
+)
 
 
 class OwnershipModuleMissingError(OctaveError, ValueError):
@@ -86,7 +92,9 @@ def model_of_viewset(views_source: str, viewset_class: str) -> str:
     return viewset_class.removesuffix("ViewSet")
 
 
-def apply_owner_scoping(app_dir: Path, *, viewset_class: str, owner_attr: str) -> list[str]:
+def apply_owner_scoping(
+    app_dir: Path, *, viewset_class: str, owner_attr: str
+) -> list[str]:
     """Make ``viewset_class`` owner-scoped and its serializer's owner field read-only.
 
     Idempotent. Returns human-readable notes describing what was (not) changed.
@@ -104,7 +112,9 @@ def apply_owner_scoping(app_dir: Path, *, viewset_class: str, owner_attr: str) -
     notes: list[str] = []
     views.write_text(ensure_import_lines(source, [OWNER_IMPORT]), encoding="utf-8")
     base_added = ensure_class_base(views, viewset_class, "OwnerScopedMixin", first=True)
-    field_set = set_class_attribute(views, viewset_class, "owner_field", f'"{owner_attr}"')
+    field_set = set_class_attribute(
+        views, viewset_class, "owner_field", f'"{owner_attr}"'
+    )
     if base_added or field_set:
         notes.append(
             f"{viewset_class}: scoped to the requesting user via {owner_attr!r} "

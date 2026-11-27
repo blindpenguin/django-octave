@@ -56,7 +56,7 @@ def test_new_with_celery_flag(tmp_path: Path) -> None:
             "sqlite",
             "--no-docker",
             "--no-multitenancy",
-        "--no-frontend",
+            "--no-frontend",
             "--celery",
             "--path",
             str(tmp_path),

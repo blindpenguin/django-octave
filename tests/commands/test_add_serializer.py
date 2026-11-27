@@ -22,7 +22,7 @@ def _project_with_post(tmp_path: Path) -> Path:
                 "sqlite",
                 "--no-docker",
                 "--no-multitenancy",
-        "--no-frontend",
+                "--no-frontend",
                 "--path",
                 str(tmp_path),
             ],
@@ -156,7 +156,7 @@ def test_add_model_fk_and_nested_serializer(tmp_path: Path) -> None:
         == 0
     )
     models = (root / "apps" / "blog" / "models.py").read_text(encoding="utf-8")
-    assert 'ForeignKey("Author"' in models or "ForeignKey(\"Author\"" in models
+    assert 'ForeignKey("Author"' in models or 'ForeignKey("Author"' in models
 
     result = runner.invoke(
         app,

@@ -17,7 +17,7 @@ from django_octave.api_parts.admin_gen import (
 )
 from django_octave.inspect.model_fields import inspect_model_fields
 
-SAMPLE = '''
+SAMPLE = """
 from django.db import models
 from apps.core.models import TimeStampedModel
 
@@ -29,7 +29,7 @@ class Post(TimeStampedModel):
     body = models.TextField()
     published = models.BooleanField(default=False)
     author = models.ForeignKey("Author", on_delete=models.CASCADE)
-'''
+"""
 
 
 def test_default_list_display_excludes_text() -> None:
@@ -45,13 +45,15 @@ def test_default_list_display_excludes_text() -> None:
 
 def test_resolve_overrides_and_select_related() -> None:
     info = inspect_model_fields(SAMPLE, "Post")
-    display, search, filters, select_related, ordering, hierarchy = resolve_admin_options(
-        info,
-        list_display=None,
-        search=None,
-        list_filter=None,
-        ordering=["-created_at"],
-        use_date_hierarchy=True,
+    display, search, filters, select_related, ordering, hierarchy = (
+        resolve_admin_options(
+            info,
+            list_display=None,
+            search=None,
+            list_filter=None,
+            ordering=["-created_at"],
+            use_date_hierarchy=True,
+        )
     )
     assert "author" in select_related
     assert hierarchy == "created_at"

@@ -120,7 +120,7 @@ def resolve_label_field(
         models_path = project_root / "apps" / app_name / "models.py"
         try:
             info = inspect_model_fields_path(models_path, model_name)
-        except (ModelWriteError, OSError):
+        except ModelWriteError, OSError:
             return "id", warnings
     return label_field_for_info(info), warnings
 
@@ -177,7 +177,9 @@ def build_crud_fields(
             required = name not in info.blank_fields and name not in info.null_fields
             if not to:
                 fields.append(CrudField(name=name, kind="number", required=required))
-                warnings.append(f"FK {name!r}: could not parse target; using number input")
+                warnings.append(
+                    f"FK {name!r}: could not parse target; using number input"
+                )
                 continue
             related_app, related_model = resolve_related_app_and_model(
                 to, default_app=default_app

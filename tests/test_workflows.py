@@ -48,14 +48,18 @@ def test_every_external_action_is_pinned_to_a_commit_sha(path: Path) -> None:
     for ref in _uses(_load(path)):
         if ref.startswith("./"):
             continue
-        assert PINNED.match(ref), f"{path.name}: {ref} is not pinned to a 40-character SHA"
+        assert PINNED.match(ref), (
+            f"{path.name}: {ref} is not pinned to a 40-character SHA"
+        )
 
 
 @pytest.mark.parametrize("path", WORKFLOWS, ids=lambda p: p.name)
 def test_every_pin_names_its_version_in_a_comment(path: Path) -> None:
     for line in path.read_text(encoding="utf-8").splitlines():
         if "uses:" in line and "uses: ./" not in line:
-            assert PIN_COMMENT.search(line), f"{path.name}: missing '# vX' comment: {line.strip()}"
+            assert PIN_COMMENT.search(line), (
+                f"{path.name}: missing '# vX' comment: {line.strip()}"
+            )
 
 
 @pytest.mark.parametrize("path", WORKFLOWS, ids=lambda p: p.name)
@@ -105,7 +109,9 @@ def test_release_is_gated_on_the_ci_workflow() -> None:
 
 
 def test_dependabot_keeps_github_actions_current() -> None:
-    data = yaml.safe_load((ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8"))
+    data = yaml.safe_load(
+        (ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
+    )
 
     ecosystems = {u["package-ecosystem"]: u for u in data["updates"]}
     assert ecosystems["github-actions"]["directory"] == "/"
@@ -126,7 +132,9 @@ def test_audit_job_audits_the_locked_dependencies_with_read_only_access() -> Non
 
     assert commands == ["uv audit --locked"]
     assert job["permissions"] == {"contents": "read"}
-    assert "secrets." not in (ROOT / ".github" / "workflows" / "audit.yml").read_text(encoding="utf-8")
+    assert "secrets." not in (ROOT / ".github" / "workflows" / "audit.yml").read_text(
+        encoding="utf-8"
+    )
 
 
 def test_audit_is_not_part_of_the_release_gate() -> None:

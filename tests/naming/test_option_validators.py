@@ -13,7 +13,11 @@ from django_octave.safe_names import (
     validate_url_path,
 )
 
-INJECTION = ['x", __import__("os").system("id"), "y', "x'], y=['", 'x"]; import os; y=["']
+INJECTION = [
+    'x", __import__("os").system("id"), "y',
+    "x'], y=['",
+    'x"]; import os; y=["',
+]
 CONTROL = ["a\nb", "a\tb", "a\x00b", "a‮b", "a b"]
 
 
@@ -24,7 +28,23 @@ def test_tag_accepts_plain_labels(value: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "value", ["", " ", ".x", "-x", "_x", "x" * 65, "a/b", 'a"b', "a'b", "a\\b", "a]b", "é", *INJECTION, *CONTROL]
+    "value",
+    [
+        "",
+        " ",
+        ".x",
+        "-x",
+        "_x",
+        "x" * 65,
+        "a/b",
+        'a"b',
+        "a'b",
+        "a\\b",
+        "a]b",
+        "é",
+        *INJECTION,
+        *CONTROL,
+    ],
 )
 def test_tag_rejects_everything_else(value: str) -> None:
     with pytest.raises(InvalidOptionError, match="Invalid --tag"):
@@ -46,28 +66,59 @@ def test_tag_strips_surrounding_whitespace() -> None:
     assert validate_tag("  blog  ") == "blog"
 
 
-@pytest.mark.parametrize("value", ["owner", "author", "created_by", "_private", "A1", "x" * 64])
+@pytest.mark.parametrize(
+    "value", ["owner", "author", "created_by", "_private", "A1", "x" * 64]
+)
 def test_owner_attr_accepts_ascii_identifiers(value: str) -> None:
     assert validate_owner_attr(value) == value
 
 
 @pytest.mark.parametrize(
     "value",
-    ["", "1abc", "a-b", "a.b", "a b", "class", "def", "None", "é", "x" * 65, *INJECTION, *CONTROL],
+    [
+        "",
+        "1abc",
+        "a-b",
+        "a.b",
+        "a b",
+        "class",
+        "def",
+        "None",
+        "é",
+        "x" * 65,
+        *INJECTION,
+        *CONTROL,
+    ],
 )
 def test_owner_attr_rejects_non_identifiers_and_keywords(value: str) -> None:
     with pytest.raises(InvalidOptionError, match="Invalid --owner-attr"):
         validate_owner_attr(value)
 
 
-@pytest.mark.parametrize("value", ["publish", "a-b", "a_b", "v1/publish", "a/b/c", "x" * 64])
+@pytest.mark.parametrize(
+    "value", ["publish", "a-b", "a_b", "v1/publish", "a/b/c", "x" * 64]
+)
 def test_url_path_accepts_literal_segments(value: str) -> None:
     assert validate_url_path(value) == value
 
 
 @pytest.mark.parametrize(
     "value",
-    ["", "/a", "a/", "a//b", "a b", "a.b", "a?b", "a(b)", "a$", "(?P<x>.*)", "x" * 65, *INJECTION, *CONTROL],
+    [
+        "",
+        "/a",
+        "a/",
+        "a//b",
+        "a b",
+        "a.b",
+        "a?b",
+        "a(b)",
+        "a$",
+        "(?P<x>.*)",
+        "x" * 65,
+        *INJECTION,
+        *CONTROL,
+    ],
 )
 def test_url_path_rejects_regexes_traversal_and_code(value: str) -> None:
     with pytest.raises(InvalidOptionError, match="Invalid --url-path"):
@@ -79,7 +130,9 @@ def test_url_name_accepts_names(value: str) -> None:
     assert validate_url_name(value) == value
 
 
-@pytest.mark.parametrize("value", ["", "-a", "_a", "a/b", "a b", "a.b", "x" * 65, *INJECTION, *CONTROL])
+@pytest.mark.parametrize(
+    "value", ["", "-a", "_a", "a/b", "a b", "a.b", "x" * 65, *INJECTION, *CONTROL]
+)
 def test_url_name_rejects_everything_else(value: str) -> None:
     with pytest.raises(InvalidOptionError, match="Invalid --url-name"):
         validate_url_name(value)

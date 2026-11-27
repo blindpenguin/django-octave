@@ -153,6 +153,8 @@ def test_render_frontend_refuses_unsafe_name_or_slug(
     target = tmp_path / "frontend"
 
     with pytest.raises(FrontendSetupError, match="Unsafe project_"):
-        render_frontend(target, project_name=name, project_slug=slug, include_register=False)
+        render_frontend(
+            target, project_name=name, project_slug=slug, include_register=False
+        )
 
     assert not target.exists()

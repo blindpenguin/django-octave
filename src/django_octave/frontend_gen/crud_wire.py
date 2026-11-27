@@ -38,7 +38,9 @@ def _ensure_routes_markers(text: str) -> str:
     if idx != -1:
         close = text.find("},", idx)
         if close == -1:
-            raise CrudWireError("Could not locate home child route end in router/index.ts")
+            raise CrudWireError(
+                "Could not locate home child route end in router/index.ts"
+            )
         insert_at = close + 2
         return (
             text[:insert_at]

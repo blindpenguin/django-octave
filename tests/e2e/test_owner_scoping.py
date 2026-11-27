@@ -16,11 +16,15 @@ from .helpers import E2E_ENABLED, SKIP_REASON, build_project, cli, run
 pytestmark = [pytest.mark.e2e, pytest.mark.skipif(not E2E_ENABLED, reason=SKIP_REASON)]
 
 SCENARIOS = Path(__file__).parent / "owner_scenarios.py.tmpl"
-FIELDS = "title:char,owner:fk:to=users.User,assignee:fk:to=users.User:on_delete=set_null"
+FIELDS = (
+    "title:char,owner:fk:to=users.User,assignee:fk:to=users.User:on_delete=set_null"
+)
 
 
 def _configure(root: Path) -> None:
-    cli("add-model", "notes", "Note", "--fields", FIELDS, "--force", "--path", str(root))
+    cli(
+        "add-model", "notes", "Note", "--fields", FIELDS, "--force", "--path", str(root)
+    )
     cli(
         "add-permission", "notes", "IsOwner", "--preset", "owner", "--owner-attr", "owner",
         "--viewset", "Note", "--path", str(root),
@@ -28,7 +32,9 @@ def _configure(root: Path) -> None:
 
 
 @pytest.fixture(scope="module", params=["plain", "multitenant"])
-def project(request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory) -> Path:
+def project(
+    request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory
+) -> Path:
     parent = tmp_path_factory.mktemp(f"octave-owner-{request.param}")
     return build_project(
         parent,
@@ -53,7 +59,15 @@ def test_owner_scenarios_pass(project: Path) -> None:
     shutil.copy(SCENARIOS, project / "tests" / "test_owner_scoping.py")
 
     done = run(
-        ["uv", "run", "pytest", "-q", "tests/test_owner_scoping.py", "-p", "no:cacheprovider"],
+        [
+            "uv",
+            "run",
+            "pytest",
+            "-q",
+            "tests/test_owner_scoping.py",
+            "-p",
+            "no:cacheprovider",
+        ],
         project,
     )
 

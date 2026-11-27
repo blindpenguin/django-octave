@@ -180,7 +180,15 @@ def _snapshot(root: Path) -> dict[str, bytes]:
 def _add_model(root: Path, *fields: str) -> object:
     return runner.invoke(
         app,
-        ["add-model", "blog", "Post", "--fields", ",".join(fields), "--path", str(root)],
+        [
+            "add-model",
+            "blog",
+            "Post",
+            "--fields",
+            ",".join(fields),
+            "--path",
+            str(root),
+        ],
     )
 
 
@@ -203,7 +211,7 @@ def _post_default(models_source: str) -> ast.expr:
     ("field", "expected"),
     [
         ("title:char:default=hello", "hello"),
-        ("title:char:default=it's \"q\"", "it's \"q\""),
+        ('title:char:default=it\'s "q"', 'it\'s "q"'),
         ("count:int:default=3", 3),
         ("ok:bool:default=true", True),
         ("price:decimal:default=9.99", "9.99"),
@@ -280,7 +288,9 @@ def _model_source(root: Path) -> str:
     return (root / "apps" / "blog" / "models.py").read_text(encoding="utf-8")
 
 
-def test_add_model_clashing_relations_get_distinct_related_names(tmp_path: Path) -> None:
+def test_add_model_clashing_relations_get_distinct_related_names(
+    tmp_path: Path,
+) -> None:
     root = _project_with_app(tmp_path)
 
     result = _add_related(root, CLASHING)
@@ -333,7 +343,9 @@ def test_add_model_explicit_related_names_are_written_as_given_without_a_note(
     assert "own reverse name" not in result.output
 
 
-def test_add_model_one_explicit_name_leaves_the_other_relation_alone(tmp_path: Path) -> None:
+def test_add_model_one_explicit_name_leaves_the_other_relation_alone(
+    tmp_path: Path,
+) -> None:
     root = _project_with_app(tmp_path)
 
     result = _add_related(
@@ -347,7 +359,9 @@ def test_add_model_one_explicit_name_leaves_the_other_relation_alone(tmp_path: P
     assert "own reverse name" not in result.output
 
 
-def test_add_model_without_a_clash_adds_no_related_name_and_no_note(tmp_path: Path) -> None:
+def test_add_model_without_a_clash_adds_no_related_name_and_no_note(
+    tmp_path: Path,
+) -> None:
     root = _project_with_app(tmp_path)
 
     result = _add_related(root, "title:char,owner:fk:to=users.User,tags:m2m:to=Tag")

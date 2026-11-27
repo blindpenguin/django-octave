@@ -256,7 +256,9 @@ def _ensure_nested_helpers(
 
         source = ser_path.read_text(encoding="utf-8")
         source = add_to_import(source, f"apps.{rel_app}.models", rel_model)
-        source = ensure_import_lines(source, ["from rest_framework import serializers\n"])
+        source = ensure_import_lines(
+            source, ["from rest_framework import serializers\n"]
+        )
         ser_path.write_text(source, encoding="utf-8")
 
         exists = class_exists(ser_path.read_text(encoding="utf-8"), class_name)
@@ -330,7 +332,9 @@ def write_serializer(
     )
 
     source = path.read_text(encoding="utf-8")
-    source = add_to_import(source, f"apps.{options.app_name}.models", options.model_name)
+    source = add_to_import(
+        source, f"apps.{options.app_name}.models", options.model_name
+    )
     source = ensure_import_lines(source, ["from rest_framework import serializers\n"])
     path.write_text(source, encoding="utf-8")
 
