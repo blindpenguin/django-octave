@@ -9,6 +9,7 @@ from django_octave.errors import OctaveError
 from django_octave.fields.codegen import field_source, needs_uuid_import, str_field_name
 from django_octave.fields.parser import FieldSpec
 from django_octave.formatting import format_written_python
+from django_octave.models_gen.class_edit import replace_class_in_module
 
 
 class ModelExistsError(OctaveError, FileExistsError):
@@ -90,20 +91,6 @@ def _ensure_imports(
     return module.with_changes(body=new_body)
 
 
-class _RemoveClass(cst.CSTTransformer):
-    def __init__(self, model_name: str) -> None:
-        self.model_name = model_name
-        self.removed = False
-
-    def leave_ClassDef(
-        self, original_node: cst.ClassDef, updated_node: cst.ClassDef
-    ) -> cst.ClassDef | cst.RemovalSentinel:
-        if original_node.name.value == self.model_name:
-            self.removed = True
-            return cst.RemovalSentinel.REMOVE
-        return updated_node
-
-
 def model_exists(source: str, model_name: str) -> bool:
     try:
         module = cst.parse_module(source)
@@ -142,10 +129,6 @@ def write_model(
     except cst.ParserSyntaxError as exc:
         raise ModelWriteError(f"Could not parse models.py: {exc}") from exc
 
-    if exists and force:
-        remover = _RemoveClass(model_name)
-        module = module.visit(remover)
-
     module = _ensure_imports(
         module,
         use_multitenancy=use_multitenancy,
@@ -158,17 +141,6 @@ def write_model(
         fields=fields,
     )
     class_module = cst.parse_module(class_src)
-    addition = list(class_module.body)
-    if module.body and addition:
-        first = addition[0]
-        if isinstance(first, cst.ClassDef):
-            addition[0] = first.with_changes(
-                leading_lines=[
-                    *first.leading_lines,
-                    cst.EmptyLine(),
-                    cst.EmptyLine(),
-                ]
-            )
-    updated = module.with_changes(body=[*module.body, *addition])
+    updated = replace_class_in_module(module, model_name, class_module.body)
     path.write_text(updated.code, encoding="utf-8")
     format_written_python(path)

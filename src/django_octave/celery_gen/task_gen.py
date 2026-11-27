@@ -148,7 +148,7 @@ def _upsert_task_in_module(
     # Append
     if "from celery import shared_task" not in text and "shared_task" not in text:
         text = _ensure_shared_task_import(text)
-    text = text.rstrip() + "\n\n" + stub
+    text = text.rstrip() + "\n\n\n" + stub
     if not text.endswith("\n"):
         text += "\n"
     return text

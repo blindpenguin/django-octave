@@ -567,9 +567,9 @@ def ensure_test_fixtures(
     ):
         if "import pytest" not in source:
             source = "import pytest\n" + source
-        source = source.rstrip() + "\n" + _FIXTURE_BLOCK
+        source = source.rstrip() + "\n\n" + _FIXTURE_BLOCK
     if use_multitenancy and "def tenant_client" not in source:
-        source = source.rstrip() + "\n" + _TENANT_FIXTURE_BLOCK
+        source = source.rstrip() + "\n\n" + _TENANT_FIXTURE_BLOCK
     if source == original and conftest_path.exists():
         return False
     conftest_path.write_text(source, encoding="utf-8")

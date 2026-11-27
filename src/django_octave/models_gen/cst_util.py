@@ -7,7 +7,11 @@ from pathlib import Path
 
 import libcst as cst
 
-from django_octave.models_gen.writer import ModelWriteError, _RemoveClass
+from django_octave.models_gen.class_edit import (
+    replace_class_in_module,
+    top_level_class_index,
+)
+from django_octave.models_gen.writer import ModelWriteError
 from django_octave.naming import pascal_to_snake, pluralize
 
 _REGISTER_RE = re.compile(
@@ -244,29 +248,6 @@ def upsert_method(
     path.write_text(updated.code, encoding="utf-8")
 
 
-def _top_level_class_index(module: cst.Module, class_name: str) -> int | None:
-    for i, node in enumerate(module.body):
-        if isinstance(node, cst.ClassDef) and node.name.value == class_name:
-            return i
-    return None
-
-
-def _with_blank_leading(addition: list[cst.CSTNode]) -> list[cst.CSTNode]:
-    if not addition:
-        return addition
-    first = addition[0]
-    if isinstance(first, cst.ClassDef):
-        addition = list(addition)
-        addition[0] = first.with_changes(
-            leading_lines=[
-                *first.leading_lines,
-                cst.EmptyLine(),
-                cst.EmptyLine(),
-            ]
-        )
-    return addition
-
-
 def ensure_class_before(path: Path, class_name: str, before_class: str) -> bool:
     """Move ``class_name`` immediately before ``before_class`` if it is after.
 
@@ -277,14 +258,14 @@ def ensure_class_before(path: Path, class_name: str, before_class: str) -> bool:
         module = cst.parse_module(source)
     except cst.ParserSyntaxError as exc:
         raise ModelWriteError(f"Could not parse {path}: {exc}") from exc
-    src_idx = _top_level_class_index(module, class_name)
-    before_idx = _top_level_class_index(module, before_class)
+    src_idx = top_level_class_index(module, class_name)
+    before_idx = top_level_class_index(module, before_class)
     if src_idx is None or before_idx is None or src_idx < before_idx:
         return False
     body = list(module.body)
     node = body.pop(src_idx)
     # After pop, before_idx shifts if src was before it — but src was after.
-    before_idx = _top_level_class_index(module.with_changes(body=body), before_class)
+    before_idx = top_level_class_index(module.with_changes(body=body), before_class)
     if before_idx is None:
         body.append(node)
     else:
@@ -316,8 +297,10 @@ def upsert_class(
     (after ensuring header imports), except when ``before`` is set and the
     class currently appears after that anchor — then move it before the anchor.
 
-    When ``before`` names an existing top-level class, the new/replaced class
-    is inserted immediately before that anchor; otherwise it is appended.
+    With ``force`` an existing class is replaced where it is, keeping the lines above
+    it; if ``before`` names a class that comes earlier in the file, the replaced class
+    is moved before it. A class that does not exist yet is inserted immediately before
+    the ``before`` anchor when one exists, and appended otherwise.
     """
     source = path.read_text(encoding="utf-8")
     source = ensure_import_lines(source, header_imports)
@@ -332,25 +315,15 @@ def upsert_class(
         module = cst.parse_module(source)
     except cst.ParserSyntaxError as exc:
         raise ModelWriteError(f"Could not parse {path}: {exc}") from exc
-    if exists and force:
-        module = module.visit(_RemoveClass(class_name))
     try:
         addition_mod = cst.parse_module(class_src.lstrip("\n"))
     except cst.ParserSyntaxError as exc:
         raise ModelWriteError(
             f"Could not generate {class_name} for {path}: {exc}"
         ) from exc
-    addition = _with_blank_leading(list(addition_mod.body))
-    body = list(module.body)
-    insert_at: int | None = None
-    if before:
-        insert_at = _top_level_class_index(module, before)
-    if insert_at is None:
-        updated = module.with_changes(body=[*body, *addition])
-    else:
-        updated = module.with_changes(
-            body=[*body[:insert_at], *addition, *body[insert_at:]]
-        )
+    updated = replace_class_in_module(
+        module, class_name, addition_mod.body, before=before
+    )
     path.write_text(updated.code, encoding="utf-8")
 
 

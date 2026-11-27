@@ -154,11 +154,11 @@ def write_permission(
     header_imports = _imports_for_preset(options.preset)
 
     if not path.exists():
+        # Only the header; the class is added below like any other, so a new file and a
+        # regenerated one look the same (two blank lines above the class).
         path.write_text(
-            _permissions_header(options.app_name, options.preset) + class_src,
-            encoding="utf-8",
+            _permissions_header(options.app_name, options.preset), encoding="utf-8"
         )
-        return path
 
     source = path.read_text(encoding="utf-8")
     exists = class_exists(source, options.class_name)
