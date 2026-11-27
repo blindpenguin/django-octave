@@ -1,0 +1,20 @@
+                                                                                                    
+ Usage: django-octave add-model [OPTIONS] [app_name] [model_name]                                   
+                                                                                                    
+ Add a Django model with fields and keep API stubs in sync.                                         
+                                                                                                    
+╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────╮
+│   app_name        <str>  Existing app under apps/.                                               │
+│   model_name      <str>  Model class name (PascalCase).                                          │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
+│ --field   -f      <list[str]>  Field as name:type[:options]. Repeatable. Default:                │
+│                                name:char:max=255.                                                │
+│ --fields          <str>        Compact comma-separated field specs (e.g.                         │
+│                                title:char:max=200,published:bool). May be combined with          │
+│                                repeatable --field.                                               │
+│ --path            <path>       Project root (default: current directory). [default: .]           │
+│ --force           <bool>       Replace an existing model and its stubs.                          │
+│ --help            <bool>       Show this message and exit.                                       │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+

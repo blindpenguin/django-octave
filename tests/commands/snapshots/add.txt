@@ -1,0 +1,15 @@
+                                                                                                    
+ Usage: django-octave add [OPTIONS] [name]                                                          
+                                                                                                    
+ Add a domain app with DRF API stubs under apps/.                                                   
+                                                                                                    
+╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────╮
+│   name      <str>  App module name (snake_case).                                                 │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
+│ --path           <path>  Project root (default: current directory). [default: .]                 │
+│ --force          <bool>  Replace an existing apps/<name> directory.                              │
+│ --model  -m      <str>   Starter model class name (PascalCase). Default: derived from app name.  │
+│ --help           <bool>  Show this message and exit.                                             │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+

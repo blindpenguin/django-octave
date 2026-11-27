@@ -1,0 +1,38 @@
+                                                                                                    
+ Usage: django-octave new [OPTIONS] [name]                                                          
+                                                                                                    
+ Create a production-ready Django REST API project.                                                 
+                                                                                                    
+╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────╮
+│   name      <str>  Project directory name.                                                       │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
+│ --path                                   <path>                     Parent directory for the     │
+│                                                                     project (default: current    │
+│                                                                     directory).                  │
+│                                                                     [default: .]                 │
+│ --database      -d                       <sqlite|postgres|mariadb>  Database backend.            │
+│ --docker            --no-docker          <bool>                     Include Dockerfile and       │
+│                                                                     Compose files for dev and    │
+│                                                                     prod.                        │
+│ --multitenancy      --no-multitenancy    <bool>                     Enable first-party row-level │
+│                                                                     multitenancy.                │
+│ --frontend          --no-frontend        <bool>                     Scaffold Vue + Nuxt UI       │
+│                                                                     frontend after create.       │
+│ --register          --no-register        <bool>                     With --frontend: include     │
+│                                                                     signup page + registration   │
+│                                                                     API.                         │
+│ --crud              --no-crud            <bool>                     With --frontend: generate    │
+│                                                                     Vue CRUD for all             │
+│                                                                     ModelViewSets.               │
+│ --force                                  <bool>                     Generate into a non-empty    │
+│                                                                     directory: generated files   │
+│                                                                     are overwritten, everything  │
+│                                                                     else is kept.                │
+│ --celery            --no-celery          <bool>                     Wire Celery + Redis after    │
+│                                                                     project create (default:     │
+│                                                                     off).                        │
+│                                                                     [default: no-celery]         │
+│ --help                                   <bool>                     Show this message and exit.  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+

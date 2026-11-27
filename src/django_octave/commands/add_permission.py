@@ -6,16 +6,12 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from rich.console import Console
 from rich.markdown import Markdown
 
 from django_octave.api_parts.ownership_gen import apply_owner_scoping
 from django_octave.api_parts.permission_gen import (
     PRESETS,
-    PermissionExistsError,
     PermissionOptions,
-    PermissionPresetError,
-    PermissionWireError,
     resolve_viewset_class_name,
     validate_preset,
     viewset_has_tenant_mixin,
@@ -23,18 +19,11 @@ from django_octave.api_parts.permission_gen import (
     write_permission,
 )
 from django_octave.cli import app
-from django_octave.naming import (
-    InvalidAppNameError,
-    InvalidModelNameError,
-    validate_app_name,
-    validate_model_name,
-)
-from django_octave.project.detect import NotOctaveProjectError, detect_project
+from django_octave.commands._common import console, err_console, handle_errors
+from django_octave.naming import validate_app_name, validate_model_name
+from django_octave.project.detect import detect_project
 from django_octave.rollback import rollback_on_error
 from django_octave.safe_names import validate_owner_attr
-
-err_console = Console(stderr=True)
-console = Console()
 
 
 @app.command("add-permission")
@@ -97,7 +86,8 @@ def add_permission_cmd(
         path=path,
         force=force,
     )
-    try:
+    scoping_notes: list[str] = []
+    with handle_errors():
         validate_owner_attr(options.owner_attr)
         project = detect_project(options.path)
         app = validate_app_name(options.app)
@@ -111,7 +101,6 @@ def add_permission_cmd(
             raise FileNotFoundError(
                 f"App apps.{app} not found. Run: django-octave add {app}"
             )
-        scoping_notes: list[str] = []
         with rollback_on_error(project.root):
             perm_path = write_permission(
                 app_dir,
@@ -148,18 +137,6 @@ def add_permission_cmd(
                         f"deny every request. Add it first in the class bases "
                         f"(from apps.core.tenancy import TenantScopedMixin).[/yellow]"
                     )
-    except (
-        NotOctaveProjectError,
-        InvalidAppNameError,
-        InvalidModelNameError,
-        PermissionExistsError,
-        PermissionPresetError,
-        PermissionWireError,
-        FileNotFoundError,
-        ValueError,
-    ) as exc:
-        err_console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(code=1) from exc
 
     lines = [
         f"# Permission `{name}`",

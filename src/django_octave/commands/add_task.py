@@ -6,22 +6,15 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from rich.console import Console
 from rich.markdown import Markdown
 
-from django_octave.celery_gen import TaskExistsError, TaskGenError, write_task
-from django_octave.celery_gen.task_gen import (
-    CrontabError,
-    TaskOptions,
-    validate_task_name,
-)
+from django_octave.celery_gen import write_task
+from django_octave.celery_gen.task_gen import TaskOptions, validate_task_name
 from django_octave.cli import app
-from django_octave.naming import InvalidAppNameError, validate_app_name
-from django_octave.project.detect import NotOctaveProjectError, detect_project
+from django_octave.commands._common import console, handle_errors
+from django_octave.naming import validate_app_name
+from django_octave.project.detect import detect_project
 from django_octave.rollback import rollback_on_error
-
-err_console = Console(stderr=True)
-console = Console()
 
 
 @app.command("add-task")
@@ -67,7 +60,7 @@ def add_task_cmd(
         path=path,
         force=force,
     )
-    try:
+    with handle_errors():
         project = detect_project(options.path)
         app = validate_app_name(options.app)
         name = validate_task_name(options.task_name)
@@ -83,17 +76,6 @@ def add_task_cmd(
                     force=options.force,
                 ),
             )
-    except (
-        NotOctaveProjectError,
-        InvalidAppNameError,
-        TaskExistsError,
-        TaskGenError,
-        CrontabError,
-        FileNotFoundError,
-        ValueError,
-    ) as exc:
-        err_console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(code=1) from exc
 
     lines = [
         f"# Task `{name}`",

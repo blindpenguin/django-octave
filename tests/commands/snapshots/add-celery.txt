@@ -1,0 +1,11 @@
+                                                                                                    
+ Usage: django-octave add-celery [OPTIONS]                                                          
+                                                                                                    
+ Configure Celery, Redis broker settings, and optional Compose services.                            
+                                                                                                    
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
+│ --path         <path>  Project root (default: current directory). [default: .]                   │
+│ --force        <bool>  Refresh Celery wiring even if already present.                            │
+│ --help         <bool>  Show this message and exit.                                               │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+

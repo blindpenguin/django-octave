@@ -6,22 +6,13 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from rich.console import Console
 from rich.markdown import Markdown
 
 from django_octave.cli import app
-from django_octave.frontend_gen import CrudSetupError, generate_crud
-from django_octave.frontend_gen.crud_wire import CrudWireError
-from django_octave.naming import (
-    InvalidAppNameError,
-    InvalidModelNameError,
-    validate_app_name,
-    validate_model_name,
-)
-from django_octave.project.detect import NotOctaveProjectError, detect_project
-
-err_console = Console(stderr=True)
-console = Console()
+from django_octave.commands._common import console, handle_errors
+from django_octave.frontend_gen import generate_crud
+from django_octave.naming import validate_app_name, validate_model_name
+from django_octave.project.detect import detect_project
 
 
 @app.command("add-frontend-crud")
@@ -66,7 +57,7 @@ def add_frontend_crud_cmd(
         force=force,
         fk_labels=fk_label,
     )
-    try:
+    with handle_errors():
         project = detect_project(options.path)
         app = validate_app_name(options.app)
         model = validate_model_name(options.model)
@@ -77,18 +68,6 @@ def add_frontend_crud_cmd(
             force=options.force,
             fk_label_overrides=options.fk_label_overrides,
         )
-    except (
-        NotOctaveProjectError,
-        CrudSetupError,
-        CrudWireError,
-        InvalidAppNameError,
-        InvalidModelNameError,
-        FileExistsError,
-        FileNotFoundError,
-        ValueError,
-    ) as exc:
-        err_console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(code=1) from exc
 
     rel = sorted({str(p.relative_to(project.root)) for p in written if p.exists()})
     # Infer plural from a pages path when possible

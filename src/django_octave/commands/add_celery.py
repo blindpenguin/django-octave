@@ -6,16 +6,12 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from rich.console import Console
 from rich.markdown import Markdown
 
-from django_octave.celery_gen import CeleryExistsError, CelerySetupError, setup_celery
-from django_octave.celery_gen.compose import ComposeInjectError
+from django_octave.celery_gen import setup_celery
 from django_octave.cli import app
-from django_octave.project.detect import NotOctaveProjectError, detect_project
-
-err_console = Console(stderr=True)
-console = Console()
+from django_octave.commands._common import console, handle_errors
+from django_octave.project.detect import detect_project
 
 
 @app.command("add-celery")
@@ -33,19 +29,9 @@ def add_celery_cmd(
     from django_octave.prompts.add_celery import resolve_add_celery_options
 
     options = resolve_add_celery_options(path=path, force=force)
-    try:
+    with handle_errors():
         project = detect_project(options.path)
         written = setup_celery(project.root, force=options.force)
-    except (
-        NotOctaveProjectError,
-        CeleryExistsError,
-        CelerySetupError,
-        ComposeInjectError,
-        FileNotFoundError,
-        ValueError,
-    ) as exc:
-        err_console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(code=1) from exc
 
     rel = [p.relative_to(project.root) for p in written if p.exists()]
     lines = [

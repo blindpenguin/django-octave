@@ -1,0 +1,18 @@
+                                                                                                    
+ Usage: django-octave add-task [OPTIONS] [app_name] [task_name]                                     
+                                                                                                    
+ Create or refresh a Celery shared_task in apps/<app>/tasks.py.                                     
+                                                                                                    
+╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────╮
+│   app_name       <str>  Existing app under apps/.                                                │
+│   task_name      <str>  Task function name (snake_case).                                         │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
+│ --bind           <bool>   Use @shared_task(bind=True).                                           │
+│ --every          <float>  Beat interval in seconds.                                              │
+│ --crontab        <str>    5-field cron expression, e.g. "0 8 * * *".                             │
+│ --path           <path>   Project root (default: current directory). [default: .]                │
+│ --force          <bool>   Replace an existing task / schedule entry.                             │
+│ --help           <bool>   Show this message and exit.                                            │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+

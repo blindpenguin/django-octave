@@ -1,0 +1,21 @@
+                                                                                                    
+ Usage: django-octave add-permission [OPTIONS] [app_name] [class_name]                              
+                                                                                                    
+ Create or refresh a DRF BasePermission subclass in permissions.py.                                 
+                                                                                                    
+╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────╮
+│   app_name        <str>  Existing app under apps/.                                               │
+│   class_name      <str>  Permission class name (PascalCase, e.g. IsOwner).                       │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
+│ --preset            <str>   Preset: auth_or_read, owner, staff_or_read, tenant_member (default:  │
+│                             owner).                                                              │
+│                             [default: owner]                                                     │
+│ --owner-attr        <str>   Object attribute for owner preset (default: owner). [default: owner] │
+│ --viewset           <str>   Wire onto Model or ModelViewSet (sets permission_classes).           │
+│ --append            <bool>  With --viewset: append instead of replacing permission_classes.      │
+│ --path              <path>  Project root (default: current directory). [default: .]              │
+│ --force             <bool>  Replace an existing permission class.                                │
+│ --help              <bool>  Show this message and exit.                                          │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+

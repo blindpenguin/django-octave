@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import importlib
+import pkgutil
+from types import ModuleType
+
 import typer
 
 app = typer.Typer(
@@ -16,21 +20,26 @@ def _root() -> None:
     """Opinionated generator for production-ready Django REST API projects."""
 
 
+def import_command_modules(package: ModuleType) -> list[str]:
+    """Import every public module of ``package`` so its ``@app.command`` handlers attach.
+
+    Modules whose name starts with an underscore (shared helpers) are skipped. An
+    import error is not caught: a broken command must stop the CLI, not vanish.
+    Returns the imported module names in alphabetical order.
+    """
+    imported: list[str] = []
+    for info in pkgutil.iter_modules(package.__path__):
+        if info.name.startswith("_"):
+            continue
+        importlib.import_module(f"{package.__name__}.{info.name}")
+        imported.append(info.name)
+    return imported
+
+
 def _register_commands() -> None:
-    """Import command modules so `@app.command` handlers attach."""
-    from django_octave.commands import add as _add  # noqa: F401
-    from django_octave.commands import add_action as _add_action  # noqa: F401
-    from django_octave.commands import add_admin as _add_admin  # noqa: F401
-    from django_octave.commands import add_celery as _add_celery  # noqa: F401
-    from django_octave.commands import add_frontend as _add_frontend  # noqa: F401
-    from django_octave.commands import add_frontend_crud as _add_frontend_crud  # noqa: F401
-    from django_octave.commands import add_model as _add_model  # noqa: F401
-    from django_octave.commands import add_permission as _add_permission  # noqa: F401
-    from django_octave.commands import add_serializer as _add_serializer  # noqa: F401
-    from django_octave.commands import add_task as _add_task  # noqa: F401
-    from django_octave.commands import add_test as _add_test  # noqa: F401
-    from django_octave.commands import add_viewset as _add_viewset  # noqa: F401
-    from django_octave.commands import new as _new  # noqa: F401
+    from django_octave import commands
+
+    import_command_modules(commands)
 
 
 _register_commands()

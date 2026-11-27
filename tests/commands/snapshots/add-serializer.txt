@@ -1,0 +1,20 @@
+                                                                                                    
+ Usage: django-octave add-serializer [OPTIONS] [app_name] [model_name]                              
+                                                                                                    
+ Create or refresh a DRF ModelSerializer for an existing model.                                     
+                                                                                                    
+╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────╮
+│   app_name        <str>  Existing app under apps/.                                               │
+│   model_name      <str>  Model class name (PascalCase).                                          │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
+│ --fields             <str>        Comma-separated Meta.fields (default: inspected).              │
+│ --read-only          <str>        Comma-separated read_only_fields.                              │
+│ --no-id              <bool>       Omit id from Meta.fields.                                      │
+│ --nested     -n      <list[str]>  Relation to nest read-only (repeatable). Form: field or        │
+│                                   field=ClassName.                                               │
+│ --path               <path>       Project root (default: current directory). [default: .]        │
+│ --force              <bool>       Replace an existing serializer class.                          │
+│ --help               <bool>       Show this message and exit.                                    │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+

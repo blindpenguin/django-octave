@@ -6,35 +6,14 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from rich.console import Console
 from rich.markdown import Markdown
 
-from django_octave.api_parts.serializer_gen import (
-    SerializerExistsError,
-    SerializerFieldError,
-)
-from django_octave.api_parts.viewset_gen import (
-    ViewSetExistsError,
-    ViewSetFieldError,
-    ViewSetOptions,
-    ViewSetPermissionError,
-    write_viewset,
-)
+from django_octave.api_parts.viewset_gen import ViewSetOptions, write_viewset
 from django_octave.cli import app
-from django_octave.models_gen.writer import ModelWriteError, model_exists
-from django_octave.naming import (
-    InvalidAppNameError,
-    InvalidModelNameError,
-    validate_app_name,
-    validate_model_name,
-)
-from django_octave.project.detect import NotOctaveProjectError, detect_project
+from django_octave.commands._common import console, handle_errors, resolve_target
 from django_octave.prompts.add_serializer import csv_to_list
 from django_octave.rollback import rollback_on_error
 from django_octave.safe_names import validate_tag
-
-err_console = Console(stderr=True)
-console = Console()
 
 
 @app.command("add-viewset")
@@ -96,58 +75,28 @@ def add_viewset_cmd(
         path=path,
         force=force,
     )
-    try:
+    scoping_notes: list[str] = []
+    with handle_errors():
         if options.tag is not None:
             validate_tag(options.tag)
-        project = detect_project(options.path)
-        app = validate_app_name(options.app)
-        model = validate_model_name(options.model)
-        app_dir = project.apps_dir / app
-        if not app_dir.is_dir():
-            raise FileNotFoundError(
-                f"App apps.{app} not found. Run: django-octave add {app}"
-            )
-        models_path = app_dir / "models.py"
-        if not models_path.is_file():
-            raise FileNotFoundError(f"models.py not found in apps.{app}")
-        source = models_path.read_text(encoding="utf-8")
-        if not model_exists(source, model):
-            raise FileNotFoundError(
-                f"Model {model} not found in apps.{app}.models. "
-                f"Run: django-octave add-model {app} {model}"
-            )
-        scoping_notes: list[str] = []
-        with rollback_on_error(project.root):
+        target = resolve_target(options.path, options.app, options.model)
+        with rollback_on_error(target.project.root):
             views_path, urls_path = write_viewset(
-                app_dir,
+                target.app_dir,
                 options=ViewSetOptions(
-                    app_name=app,
-                    model_name=model,
+                    app_name=target.app,
+                    model_name=target.model,
                     permission=options.permission,
                     filters=csv_to_list(options.filters),
                     search=csv_to_list(options.search),
                     ordering=csv_to_list(options.ordering),
                     tag=options.tag,
                     force=options.force,
-                    use_multitenancy=project.use_multitenancy,
+                    use_multitenancy=target.project.use_multitenancy,
                 ),
                 notes=scoping_notes,
             )
-    except (
-        NotOctaveProjectError,
-        InvalidAppNameError,
-        InvalidModelNameError,
-        ViewSetExistsError,
-        ViewSetPermissionError,
-        ViewSetFieldError,
-        SerializerExistsError,
-        SerializerFieldError,
-        ModelWriteError,
-        FileNotFoundError,
-        ValueError,
-    ) as exc:
-        err_console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(code=1) from exc
+    project, model = target.project, target.model
 
     console.print(
         Markdown(

@@ -1,0 +1,27 @@
+                                                                                                    
+ Usage: django-octave [OPTIONS] COMMAND [ARGS]...                                                   
+                                                                                                    
+ Opinionated generator for production-ready Django REST API projects.                               
+                                                                                                    
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
+│ --install-completion        <bool>  Install completion for the current shell.                    │
+│ --show-completion           <bool>  Show completion for the current shell, to copy it or         │
+│                                     customize the installation.                                  │
+│ --help                      <bool>  Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────────────────────────╮
+│ add                Add a domain app with DRF API stubs under apps/.                              │
+│ add-action         Add a DRF @action stub to an existing ModelViewSet.                           │
+│ add-admin          Create or refresh a Django ModelAdmin for an existing model.                  │
+│ add-celery         Configure Celery, Redis broker settings, and optional Compose services.       │
+│ add-frontend       Scaffold a Vue 3 + Vite + Nuxt UI frontend wired to JWT auth.                 │
+│ add-frontend-crud  Generate list/detail/create/edit Vue pages for a DRF ModelViewSet.            │
+│ add-model          Add a Django model with fields and keep API stubs in sync.                    │
+│ add-permission     Create or refresh a DRF BasePermission subclass in permissions.py.            │
+│ add-serializer     Create or refresh a DRF ModelSerializer for an existing model.                │
+│ add-task           Create or refresh a Celery shared_task in apps/<app>/tasks.py.                │
+│ add-test           Create factory-boy factory and pytest stubs for a model.                      │
+│ add-viewset        Create or refresh a DRF ModelViewSet and ensure router registration.          │
+│ new                Create a production-ready Django REST API project.                            │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+

@@ -1,0 +1,18 @@
+                                                                                                    
+ Usage: django-octave add-frontend-crud [OPTIONS] [app_name] [model_name]                           
+                                                                                                    
+ Generate list/detail/create/edit Vue pages for a DRF ModelViewSet.                                 
+                                                                                                    
+╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────╮
+│   app_name        <str>  Existing app under apps/.                                               │
+│   model_name      <str>  Model class name (PascalCase).                                          │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
+│ --path            <path>       Project root (default: current directory). [default: .]           │
+│ --force           <bool>       Overwrite existing CRUD pages.                                    │
+│ --fk-label        <list[str]>  Override FK dropdown label attr: FIELD=ATTR (repeatable).         │
+│                                Default: related model __str__ / heuristic. SPA also prefers API  │
+│                                `label` when present.                                             │
+│ --help            <bool>       Show this message and exit.                                       │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+

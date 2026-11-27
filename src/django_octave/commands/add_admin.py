@@ -7,28 +7,12 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from rich.console import Console
 from rich.markdown import Markdown
 
-from django_octave.api_parts.admin_gen import (
-    AdminExistsError,
-    AdminFieldError,
-    AdminOptions,
-    write_admin,
-)
+from django_octave.api_parts.admin_gen import AdminOptions, write_admin
 from django_octave.cli import app
-from django_octave.models_gen.writer import ModelWriteError, model_exists
-from django_octave.naming import (
-    InvalidAppNameError,
-    InvalidModelNameError,
-    validate_app_name,
-    validate_model_name,
-)
-from django_octave.project.detect import NotOctaveProjectError, detect_project
+from django_octave.commands._common import console, handle_errors, resolve_target
 from django_octave.prompts.add_serializer import csv_to_list
-
-err_console = Console(stderr=True)
-console = Console()
 
 
 @app.command("add-admin")
@@ -90,29 +74,13 @@ def add_admin_cmd(
         path=path,
         force=force,
     )
-    try:
-        project = detect_project(options.path)
-        app = validate_app_name(options.app)
-        model = validate_model_name(options.model)
-        app_dir = project.apps_dir / app
-        if not app_dir.is_dir():
-            raise FileNotFoundError(
-                f"App apps.{app} not found. Run: django-octave add {app}"
-            )
-        models_path = app_dir / "models.py"
-        if not models_path.is_file():
-            raise FileNotFoundError(f"models.py not found in apps.{app}")
-        source = models_path.read_text(encoding="utf-8")
-        if not model_exists(source, model):
-            raise FileNotFoundError(
-                f"Model {model} not found in apps.{app}.models. "
-                f"Run: django-octave add-model {app} {model}"
-            )
+    with handle_errors():
+        target = resolve_target(options.path, options.app, options.model)
         admin_path = write_admin(
-            app_dir,
+            target.app_dir,
             options=AdminOptions(
-                app_name=app,
-                model_name=model,
+                app_name=target.app,
+                model_name=target.model,
                 list_display=csv_to_list(options.list_display),
                 search=csv_to_list(options.search),
                 list_filter=csv_to_list(options.list_filter),
@@ -121,18 +89,7 @@ def add_admin_cmd(
                 force=options.force,
             ),
         )
-    except (
-        NotOctaveProjectError,
-        InvalidAppNameError,
-        InvalidModelNameError,
-        AdminExistsError,
-        AdminFieldError,
-        ModelWriteError,
-        FileNotFoundError,
-        ValueError,
-    ) as exc:
-        err_console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(code=1) from exc
+    project, model = target.project, target.model
 
     text = admin_path.read_text(encoding="utf-8")
     m = re.search(r"list_display\s*=\s*\(([^)]*)\)", text)

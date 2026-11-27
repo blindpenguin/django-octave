@@ -1,0 +1,22 @@
+                                                                                                    
+ Usage: django-octave add-viewset [OPTIONS] [app_name] [model_name]                                 
+                                                                                                    
+ Create or refresh a DRF ModelViewSet and ensure router registration.                               
+                                                                                                    
+╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────╮
+│   app_name        <str>  Existing app under apps/.                                               │
+│   model_name      <str>  Model class name (PascalCase).                                          │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
+│ --permission        <str>   Permission class: IsAuthenticated, AllowAny, IsAdminUser, or a class │
+│                             in apps.<app>.permissions.                                           │
+│                             [default: IsAuthenticated]                                           │
+│ --filter            <str>   Comma-separated filterset_fields.                                    │
+│ --search            <str>   Comma-separated search_fields.                                       │
+│ --ordering          <str>   Comma-separated ordering_fields.                                     │
+│ --tag               <str>   Spectacular tag (default: snake_case model).                         │
+│ --path              <path>  Project root (default: current directory). [default: .]              │
+│ --force             <bool>  Replace an existing viewset class.                                   │
+│ --help              <bool>  Show this message and exit.                                          │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+

@@ -1,0 +1,15 @@
+                                                                                                    
+ Usage: django-octave add-frontend [OPTIONS]                                                        
+                                                                                                    
+ Scaffold a Vue 3 + Vite + Nuxt UI frontend wired to JWT auth.                                      
+                                                                                                    
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
+│ --path                         <path>  Project root (default: current directory). [default: .]   │
+│ --register    --no-register    <bool>  Include signup page + registration API (prompted if       │
+│                                        omitted).                                                 │
+│ --crud        --no-crud        <bool>  Generate Vue CRUD pages for all ModelViewSets (prompted   │
+│                                        if omitted).                                              │
+│ --force                        <bool>  Refresh frontend even if already present.                 │
+│ --help                         <bool>  Show this message and exit.                               │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+

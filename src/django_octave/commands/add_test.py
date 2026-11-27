@@ -6,26 +6,11 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from rich.console import Console
 from rich.markdown import Markdown
 
-from django_octave.api_parts.test_gen import (
-    StubExistsError,
-    StubOptions,
-    write_tests,
-)
+from django_octave.api_parts.test_gen import StubOptions, write_tests
 from django_octave.cli import app
-from django_octave.models_gen.writer import ModelWriteError, model_exists
-from django_octave.naming import (
-    InvalidAppNameError,
-    InvalidModelNameError,
-    validate_app_name,
-    validate_model_name,
-)
-from django_octave.project.detect import NotOctaveProjectError, detect_project
-
-err_console = Console(stderr=True)
-console = Console()
+from django_octave.commands._common import console, handle_errors, resolve_target
 
 
 @app.command("add-test")
@@ -58,45 +43,24 @@ def add_test_cmd(
         path=path,
         force=force,
     )
-    try:
-        project = detect_project(options.path)
-        app = validate_app_name(options.app)
-        model = validate_model_name(options.model)
-        app_dir = project.apps_dir / app
-        if not app_dir.is_dir():
-            raise FileNotFoundError(
-                f"App apps.{app} not found. Run: django-octave add {app}"
-            )
-        models_path = app_dir / "models.py"
-        if not models_path.is_file():
-            raise FileNotFoundError(f"models.py not found in apps.{app}")
-        source = models_path.read_text(encoding="utf-8")
-        if not model_exists(source, model):
-            raise FileNotFoundError(
-                f"Model {model} not found in apps.{app}.models. "
-                f"Run: django-octave add-model {app} {model}"
-            )
+    with handle_errors():
+        target = resolve_target(options.path, options.app, options.model)
         written = write_tests(
-            project.root,
-            app_dir,
+            target.project.root,
+            target.app_dir,
             options=StubOptions(
-                app_name=app,
-                model_name=model,
+                app_name=target.app,
+                model_name=target.model,
                 force=options.force,
             ),
-            use_multitenancy=project.use_multitenancy,
+            use_multitenancy=target.project.use_multitenancy,
         )
-    except (
-        NotOctaveProjectError,
-        InvalidAppNameError,
-        InvalidModelNameError,
-        StubExistsError,
-        ModelWriteError,
-        FileNotFoundError,
-        ValueError,
-    ) as exc:
-        err_console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(code=1) from exc
+    project, app_dir, app, model = (
+        target.project,
+        target.app_dir,
+        target.app,
+        target.model,
+    )
 
     lines = [
         f"# Tests for `{app}.{model}`",

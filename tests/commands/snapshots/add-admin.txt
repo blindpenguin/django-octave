@@ -1,0 +1,20 @@
+                                                                                                    
+ Usage: django-octave add-admin [OPTIONS] [app_name] [model_name]                                   
+                                                                                                    
+ Create or refresh a Django ModelAdmin for an existing model.                                       
+                                                                                                    
+╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────╮
+│   app_name        <str>  Existing app under apps/.                                               │
+│   model_name      <str>  Model class name (PascalCase).                                          │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
+│ --list-display             <str>   Comma-separated list_display (default: inspected heuristic).  │
+│ --search                   <str>   Comma-separated search_fields.                                │
+│ --filter                   <str>   Comma-separated list_filter.                                  │
+│ --ordering                 <str>   Comma-separated ModelAdmin.ordering.                          │
+│ --no-date-hierarchy        <bool>  Omit date_hierarchy even when timestamps exist.               │
+│ --path                     <path>  Project root (default: current directory). [default: .]       │
+│ --force                    <bool>  Replace an existing ModelAdmin class.                         │
+│ --help                     <bool>  Show this message and exit.                                   │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+

@@ -1,0 +1,25 @@
+                                                                                                    
+ Usage: django-octave add-action [OPTIONS] [app_name] [viewset] [action_name]                       
+                                                                                                    
+ Add a DRF @action stub to an existing ModelViewSet.                                                
+                                                                                                    
+╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────╮
+│   app_name         <str>  Existing app under apps/.                                              │
+│   viewset          <str>  Model or ModelViewSet class name.                                      │
+│   action_name      <str>  Action method name (snake_case).                                       │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
+│ --detail        --list    <bool>  Detail (pk) vs collection action. [default: detail]            │
+│ --methods                 <str>   Comma-separated HTTP methods (default: post detail / get       │
+│                                   list).                                                         │
+│ --url-path                <str>   Optional @action url_path.                                     │
+│ --url-name                <str>   Optional @action url_name.                                     │
+│ --permission              <str>   Optional per-action permission (stock or                       │
+│                                   apps.<app>.permissions).                                       │
+│ --serializer              <str>   Optional serializer_class (must exist in serializers.py).      │
+│ --tag                     <str>   Spectacular tag (default: detect or snake).                    │
+│ --path                    <path>  Project root (default: current directory). [default: .]        │
+│ --force                   <bool>  Replace an existing action method.                             │
+│ --help                    <bool>  Show this message and exit.                                    │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+

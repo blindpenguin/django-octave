@@ -6,30 +6,21 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from rich.console import Console
 from rich.markdown import Markdown
 
 from django_octave.api_parts.action_gen import (
-    ActionExistsError,
-    ActionMethodError,
-    ActionNameError,
     ActionOptions,
-    ActionTargetError,
     action_url_hint,
     parse_http_methods,
     write_action,
 )
 from django_octave.api_parts.permission_gen import resolve_viewset_class_name
-from django_octave.api_parts.viewset_gen import ViewSetPermissionError
 from django_octave.cli import app
-from django_octave.models_gen.writer import ModelWriteError
-from django_octave.naming import InvalidAppNameError, validate_app_name
-from django_octave.project.detect import NotOctaveProjectError, detect_project
+from django_octave.commands._common import console, handle_errors
+from django_octave.naming import validate_app_name
+from django_octave.project.detect import detect_project
 from django_octave.rollback import rollback_on_error
 from django_octave.safe_names import validate_tag, validate_url_name, validate_url_path
-
-err_console = Console(stderr=True)
-console = Console()
 
 
 @app.command("add-action")
@@ -110,7 +101,7 @@ def add_action_cmd(
         path=path,
         force=force,
     )
-    try:
+    with handle_errors():
         if options.tag is not None:
             validate_tag(options.tag)
         if options.url_path is not None:
@@ -143,20 +134,6 @@ def add_action_cmd(
                     force=options.force,
                 ),
             )
-    except (
-        NotOctaveProjectError,
-        InvalidAppNameError,
-        ActionExistsError,
-        ActionNameError,
-        ActionMethodError,
-        ActionTargetError,
-        ViewSetPermissionError,
-        ModelWriteError,
-        FileNotFoundError,
-        ValueError,
-    ) as exc:
-        err_console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(code=1) from exc
 
     hint = action_url_hint(
         app_name=app,

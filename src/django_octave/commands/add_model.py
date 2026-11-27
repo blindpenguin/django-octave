@@ -6,31 +6,15 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from rich.console import Console
 from rich.markdown import Markdown
 
 from django_octave.cli import app
-from django_octave.fields.parser import (
-    FieldParseError,
-    parse_fields,
-    split_compact_fields,
-)
+from django_octave.commands._common import console, handle_errors
+from django_octave.fields.parser import parse_fields, split_compact_fields
 from django_octave.models_gen.api_sync import sync_api_stubs
-from django_octave.models_gen.writer import (
-    ModelExistsError,
-    ModelWriteError,
-    write_model,
-)
-from django_octave.naming import (
-    InvalidAppNameError,
-    InvalidModelNameError,
-    validate_app_name,
-    validate_model_name,
-)
-from django_octave.project.detect import NotOctaveProjectError, detect_project
-
-err_console = Console(stderr=True)
-console = Console()
+from django_octave.models_gen.writer import write_model
+from django_octave.naming import validate_app_name, validate_model_name
+from django_octave.project.detect import detect_project
 
 
 @app.command("add-model")
@@ -85,7 +69,7 @@ def add_model_cmd(
         path=path,
         force=force,
     )
-    try:
+    with handle_errors():
         project = detect_project(options.path)
         app = validate_app_name(options.app)
         model = validate_model_name(options.model)
@@ -111,18 +95,6 @@ def add_model_cmd(
             force=options.force,
             use_multitenancy=project.use_multitenancy,
         )
-    except (
-        NotOctaveProjectError,
-        InvalidAppNameError,
-        InvalidModelNameError,
-        FieldParseError,
-        ModelExistsError,
-        ModelWriteError,
-        FileNotFoundError,
-        ValueError,
-    ) as exc:
-        err_console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(code=1) from exc
 
     console.print(
         Markdown(

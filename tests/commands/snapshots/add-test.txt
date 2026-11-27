@@ -1,0 +1,15 @@
+                                                                                                    
+ Usage: django-octave add-test [OPTIONS] [app_name] [model_name]                                    
+                                                                                                    
+ Create factory-boy factory and pytest stubs for a model.                                           
+                                                                                                    
+╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────╮
+│   app_name        <str>  Existing app under apps/.                                               │
+│   model_name      <str>  Model class name (PascalCase).                                          │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
+│ --path         <path>  Project root (default: current directory). [default: .]                   │
+│ --force        <bool>  Replace existing factory/test files for this model.                       │
+│ --help         <bool>  Show this message and exit.                                               │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+

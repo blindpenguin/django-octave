@@ -6,24 +6,12 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from rich.console import Console
 from rich.markdown import Markdown
 
 from django_octave.cli import app
-from django_octave.frontend_gen import (
-    ComposeInjectError,
-    CrudSetupError,
-    DjangoPatchError,
-    FrontendExistsError,
-    FrontendSetupError,
-    generate_crud_all,
-    setup_frontend,
-)
-from django_octave.frontend_gen.crud_wire import CrudWireError
-from django_octave.project.detect import NotOctaveProjectError, detect_project
-
-err_console = Console(stderr=True)
-console = Console()
+from django_octave.commands._common import console, handle_errors
+from django_octave.frontend_gen import generate_crud_all, setup_frontend
+from django_octave.project.detect import detect_project
 
 
 @app.command("add-frontend")
@@ -60,37 +48,23 @@ def add_frontend_cmd(
         crud=crud,
         force=force,
     )
-    try:
+    with handle_errors():
         project = detect_project(options.path)
         written = setup_frontend(
             project.root,
             include_register=options.register,
             force=options.force,
         )
-    except (
-        NotOctaveProjectError,
-        FrontendExistsError,
-        FrontendSetupError,
-        DjangoPatchError,
-        ComposeInjectError,
-        FileNotFoundError,
-        ValueError,
-    ) as exc:
-        err_console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(code=1) from exc
 
     crud_skips: list[str] = []
     crud_warnings: list[str] = []
     if options.crud:
-        try:
+        with handle_errors("CRUD generation failed"):
             crud_written, crud_warnings, crud_skips = generate_crud_all(
                 project.root,
                 force=options.force,
             )
             written.extend(crud_written)
-        except (CrudSetupError, CrudWireError, ValueError) as exc:
-            err_console.print(f"[red]CRUD generation failed: {exc}[/red]")
-            raise typer.Exit(code=1) from exc
 
     rel = sorted({str(p.relative_to(project.root)) for p in written if p.exists()})
     lines = [
