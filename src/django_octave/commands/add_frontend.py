@@ -12,6 +12,7 @@ from django_octave.cli import app
 from django_octave.commands._common import console, handle_errors
 from django_octave.frontend_gen import generate_crud_all, setup_frontend
 from django_octave.project.detect import detect_project
+from django_octave.rollback import rollback_on_error
 
 
 @app.command("add-frontend")
@@ -50,16 +51,18 @@ def add_frontend_cmd(
     )
     with handle_errors():
         project = detect_project(options.path)
-        written = setup_frontend(
-            project.root,
-            include_register=options.register,
-            force=options.force,
-        )
+        with rollback_on_error(project.root):
+            written = setup_frontend(
+                project.root,
+                include_register=options.register,
+                force=options.force,
+            )
 
     crud_skips: list[str] = []
     crud_warnings: list[str] = []
     if options.crud:
-        with handle_errors("CRUD generation failed"):
+        # A failing CRUD step undoes only itself: the frontend above stays, as before.
+        with handle_errors("CRUD generation failed"), rollback_on_error(project.root):
             crud_written, crud_warnings, crud_skips = generate_crud_all(
                 project.root,
                 force=options.force,

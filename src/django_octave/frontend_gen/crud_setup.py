@@ -18,6 +18,7 @@ from django_octave.frontend_gen.crud_wire import (
 )
 from django_octave.frontend_gen.detect import frontend_configured
 from django_octave.frontend_gen.django_patch import ensure_user_list_api
+from django_octave.project.marker import update_features
 
 
 class CrudSetupError(OctaveError, ValueError):
@@ -134,4 +135,6 @@ def generate_crud_all(
         written.extend(
             wire_crud(_frontend_dir(root), _specs_for_wiring(root, generated))
         )
+    # The generated pages stay when a later run skips CRUD, so this only turns on.
+    update_features(root, crud=True)
     return written, warnings, skips

@@ -16,6 +16,7 @@ from django_octave.frontend_gen.detect import (
     project_slug,
 )
 from django_octave.frontend_gen.django_patch import patch_django_for_frontend
+from django_octave.project.marker import update_features
 from django_octave.safe_names import RULE, is_safe_project_name, is_safe_slug
 
 FRONTEND_TEMPLATES_ROOT = (
@@ -176,4 +177,6 @@ def setup_frontend(
     written.extend(patched)
 
     written.extend(inject_project_compose(root, force=force))
+    # register mirrors this run: patching the URLs removes the route when it is off.
+    update_features(root, frontend=True, register=include_register)
     return written

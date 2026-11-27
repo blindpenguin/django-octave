@@ -12,6 +12,7 @@ from django_octave.celery_gen import setup_celery
 from django_octave.cli import app
 from django_octave.commands._common import console, handle_errors
 from django_octave.project.detect import detect_project
+from django_octave.rollback import rollback_on_error
 
 
 @app.command("add-celery")
@@ -31,7 +32,8 @@ def add_celery_cmd(
     options = resolve_add_celery_options(path=path, force=force)
     with handle_errors():
         project = detect_project(options.path)
-        written = setup_celery(project.root, force=options.force)
+        with rollback_on_error(project.root):
+            written = setup_celery(project.root, force=options.force)
 
     rel = [p.relative_to(project.root) for p in written if p.exists()]
     lines = [

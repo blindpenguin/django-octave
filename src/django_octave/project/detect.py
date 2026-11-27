@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from django_octave.errors import OctaveError
+from django_octave.project.marker import Marker, check_compatible, read_marker
 
 
 class NotOctaveProjectError(OctaveError, ValueError):
@@ -19,6 +20,8 @@ class OctaveProject:
     urls: Path
     apps_dir: Path
     use_multitenancy: bool
+    marker: Marker | None = None
+    """Contents of ``.octave.toml``; ``None`` for a project generated without one."""
 
 
 def _has_tenant_aware_model(models_path: Path) -> bool:
@@ -71,10 +74,18 @@ def detect_project(path: Path) -> OctaveProject:
         or _has_tenant_middleware(core_middleware)
     )
 
+    # Refuses (before any command writes a file) a project from a newer django-octave
+    # or an unreadable marker. Projects without a marker are accepted as before, and
+    # what is present (multitenancy above) is still read from the files, not the marker.
+    marker = read_marker(root)
+    if marker is not None:
+        check_compatible(marker)
+
     return OctaveProject(
         root=root,
         settings_base=settings_base,
         urls=urls,
         apps_dir=apps_dir,
         use_multitenancy=use_mt,
+        marker=marker,
     )

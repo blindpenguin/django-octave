@@ -7,6 +7,7 @@ from pathlib import Path
 from django_octave.celery_gen.compose import inject_compose_services
 from django_octave.celery_gen.detect import celery_configured, project_slug
 from django_octave.errors import OctaveError
+from django_octave.project.marker import update_features
 from django_octave.rendering.versions import CELERY
 
 _SETTINGS_MARKER_BEGIN = "# --- django-octave celery begin ---"
@@ -186,4 +187,5 @@ def setup_celery(root: Path, *, force: bool = False) -> list[Path]:
         inject_compose_services(compose, force=force)
         written.append(compose)
 
+    update_features(root, celery=True)
     return written

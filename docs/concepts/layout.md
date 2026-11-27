@@ -7,6 +7,7 @@ myproject/
 ├── manage.py
 ├── pyproject.toml
 ├── .env.example
+├── .octave.toml            # generator version + options chosen (commit it)
 ├── staticfiles/            # empty STATIC_ROOT (.gitkeep) for WhiteNoise
 ├── config/                 # Django project package
 │   ├── settings/           # base / local / prod (django-environ)

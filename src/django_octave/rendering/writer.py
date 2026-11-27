@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from django_octave.errors import OctaveError
+from django_octave.project.marker import FILENAME as MARKER_FILENAME
+from django_octave.project.marker import new_marker, render_marker
 from django_octave.rendering.context import ProjectContext
 from django_octave.rendering.engine import (
     TEMPLATES_ROOT,
@@ -179,6 +181,15 @@ def render_project_report(ctx: ProjectContext) -> RenderReport:
         gitkeep = staticfiles / ".gitkeep"
         if not gitkeep.exists():
             gitkeep.write_text("", encoding="utf-8")
+
+        # The marker is not a template: its values are validated, not rendered. Writing it
+        # into the temporary tree places it atomically with the rest of the project.
+        marker = new_marker(
+            database=ctx.database.value,
+            docker=ctx.use_docker,
+            multitenancy=ctx.use_multitenancy,
+        )
+        (tmp_root / MARKER_FILENAME).write_text(render_marker(marker), encoding="utf-8")
 
         overwritten = _place(tmp_root, target)
 

@@ -29,6 +29,7 @@ Current package: **0.3.0**. Pick items and open a Spec Workflow spec before impl
 | Quiet local start | `staticfiles/.gitkeep`, local WhiteNoise finders; `UserFactory` via `factory.django.Password` | (follow-on to heuristics) |
 | Reverse names | `related_name=` option; distinct generated names when relations to one target would clash; admin `list_display` without m2m fields | `related-name-option` |
 | Stable `--force` | A replaced class keeps its place (permissions, serializers, viewsets, admin, models); created and regenerated files agree on blank lines | `stable-force-regeneration` |
+| Project marker | `.octave.toml` records the generator version and options; `add-*` commands refuse a project from a newer django-octave; feature flags kept in step by `add-celery` / `add-frontend` | `octave-marker` |
 
 ### Docs & release
 
@@ -69,7 +70,7 @@ Verified by generators-only scaffolds: recipe / support-desk (API green), multit
 ### Generator DX
 
 7. **`check` / `doctor`** — validate an octave project (layout, `INSTALLED_APPS`, missing stubs)  
-8. **`upgrade-templates`** — refresh generated files from newer octave versions (diff-based / careful)  
+8. **`upgrade-templates`** — refresh generated files from newer octave versions (diff-based / careful) The generator-version marker (`.octave.toml`) it needs is in place (`octave-marker`); what remains is the upgrade itself and a way to backfill the marker into projects generated before it.  
 9. **PyPI Trusted Publishing** — follow-on to GitHub Release CI  
 
 ### Known gaps (found during the security review)
