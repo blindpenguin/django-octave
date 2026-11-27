@@ -6,6 +6,7 @@ from pathlib import Path
 
 from django_octave.celery_gen.compose import inject_compose_services
 from django_octave.celery_gen.detect import celery_configured, project_slug
+from django_octave.errors import OctaveError
 from django_octave.rendering.versions import CELERY
 
 _SETTINGS_MARKER_BEGIN = "# --- django-octave celery begin ---"
@@ -14,11 +15,11 @@ _ENV_MARKER_BEGIN = "# --- django-octave celery begin ---"
 _ENV_MARKER_END = "# --- django-octave celery end ---"
 
 
-class CeleryExistsError(FileExistsError):
+class CeleryExistsError(OctaveError, FileExistsError):
     """Raised when Celery is already configured without force."""
 
 
-class CelerySetupError(ValueError):
+class CelerySetupError(OctaveError, ValueError):
     """Raised when Celery setup cannot complete safely."""
 
 

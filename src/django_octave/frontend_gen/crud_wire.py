@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from django_octave.errors import OctaveError
 from django_octave.frontend_gen.crud_types import ResourceSpec
 
 ROUTES_BEGIN = "// --- django-octave crud routes begin ---"
@@ -12,7 +13,7 @@ NAV_BEGIN = "// --- django-octave crud nav begin ---"
 NAV_END = "// --- django-octave crud nav end ---"
 
 
-class CrudWireError(ValueError):
+class CrudWireError(OctaveError, ValueError):
     """Raised when router/layout wiring cannot complete."""
 
 

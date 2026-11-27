@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from django_octave.celery_gen.detect import celery_configured
+from django_octave.errors import OctaveError
 
 _TASK_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _BEAT_ASSIGN_RE = re.compile(
@@ -16,11 +17,11 @@ _BEAT_ASSIGN_RE = re.compile(
 )
 
 
-class TaskGenError(ValueError):
+class TaskGenError(OctaveError, ValueError):
     """Raised when task generation cannot complete."""
 
 
-class TaskExistsError(FileExistsError):
+class TaskExistsError(OctaveError, FileExistsError):
     """Raised when a task already exists without force."""
 
 

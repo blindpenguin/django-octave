@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from django_octave.errors import OctaveError
 from django_octave.models_gen.cst_util import (
     add_to_import,
     class_exists,
@@ -19,15 +20,15 @@ PRESETS: frozenset[str] = frozenset(
 )
 
 
-class PermissionExistsError(FileExistsError):
+class PermissionExistsError(OctaveError, FileExistsError):
     """Raised when the permission class already exists without force."""
 
 
-class PermissionPresetError(ValueError):
+class PermissionPresetError(OctaveError, ValueError):
     """Raised for unknown or unavailable presets."""
 
 
-class PermissionWireError(ValueError):
+class PermissionWireError(OctaveError, ValueError):
     """Raised when viewset wiring fails."""
 
 

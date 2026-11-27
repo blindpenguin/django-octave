@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from django_octave.errors import OctaveError
 from django_octave.frontend_gen.crud_discover import (
     discover_resources,
     require_resource,
@@ -19,7 +20,7 @@ from django_octave.frontend_gen.detect import frontend_configured
 from django_octave.frontend_gen.django_patch import ensure_user_list_api
 
 
-class CrudSetupError(ValueError):
+class CrudSetupError(OctaveError, ValueError):
     """Raised when CRUD setup cannot complete safely."""
 
 

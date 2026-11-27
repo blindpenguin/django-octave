@@ -8,6 +8,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
+from django_octave.errors import OctaveError
 from django_octave.frontend_gen.compose import inject_project_compose
 from django_octave.frontend_gen.detect import (
     frontend_configured,
@@ -22,11 +23,11 @@ FRONTEND_TEMPLATES_ROOT = (
 )
 
 
-class FrontendExistsError(FileExistsError):
+class FrontendExistsError(OctaveError, FileExistsError):
     """Raised when a frontend already exists without force."""
 
 
-class FrontendSetupError(ValueError):
+class FrontendSetupError(OctaveError, ValueError):
     """Raised when frontend scaffolding cannot complete safely."""
 
 

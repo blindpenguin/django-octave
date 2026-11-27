@@ -5,8 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from django_octave.errors import OctaveError
 
-class NotOctaveProjectError(ValueError):
+
+class NotOctaveProjectError(OctaveError, ValueError):
     """Raised when the path is not a compatible project."""
 
 

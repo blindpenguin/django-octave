@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from django_octave.errors import OctaveError
 from django_octave.models_gen.cst_util import (
     class_exists,
     ensure_class_base,
@@ -26,11 +27,11 @@ _OWNER_FIELD_RE = re.compile(r'^\s*owner_field\s*=\s*["\']([A-Za-z_][A-Za-z0-9_]
 _QUERYSET_MODEL_RE = re.compile(r"queryset\s*=\s*(\w+)\.(?:objects|all_objects|_default_manager)")
 
 
-class OwnershipModuleMissingError(ValueError):
+class OwnershipModuleMissingError(OctaveError, ValueError):
     """Raised when a project lacks ``apps/core/ownership.py``."""
 
 
-class OwnershipWireError(ValueError):
+class OwnershipWireError(OctaveError, ValueError):
     """Raised when a viewset cannot be made owner-scoped."""
 
 

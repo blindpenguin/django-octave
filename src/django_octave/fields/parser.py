@@ -8,6 +8,8 @@ import uuid
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
+from django_octave.errors import OctaveError
+
 ALLOWED_TYPES: frozenset[str] = frozenset(
     {
         "char",
@@ -64,7 +66,7 @@ _TRUE = frozenset({"1", "true", "yes", "on"})
 _FALSE = frozenset({"0", "false", "no", "off"})
 
 
-class FieldParseError(ValueError):
+class FieldParseError(OctaveError, ValueError):
     """Raised when a field declaration cannot be parsed."""
 
 

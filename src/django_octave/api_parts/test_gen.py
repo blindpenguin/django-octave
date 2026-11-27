@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from django_octave.api_parts.ownership_gen import viewset_owner_field
+from django_octave.errors import OctaveError
 from django_octave.formatting import format_written_python
 from django_octave.inspect.model_fields import (
     ModelFieldInfo,
@@ -28,7 +29,7 @@ _OMIT_TYPES = frozenset(
 _AUTO_SKIP = frozenset({"created_at", "updated_at", "id"})
 
 
-class StubExistsError(FileExistsError):
+class StubExistsError(OctaveError, FileExistsError):
     """Raised when factory/test files already exist without force."""
 
 

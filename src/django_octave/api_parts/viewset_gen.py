@@ -11,6 +11,7 @@ from django_octave.api_parts.ownership_gen import (
     owner_attr_of_permission,
 )
 from django_octave.api_parts.serializer_gen import SerializerOptions, write_serializer
+from django_octave.errors import OctaveError
 from django_octave.inspect.model_fields import (
     ModelFieldInfo,
     default_ordering_names,
@@ -42,15 +43,15 @@ PERMISSIONS: dict[str, str] = {
 }
 
 
-class ViewSetExistsError(FileExistsError):
+class ViewSetExistsError(OctaveError, FileExistsError):
     """Raised when the viewset class already exists without force."""
 
 
-class ViewSetPermissionError(ValueError):
+class ViewSetPermissionError(OctaveError, ValueError):
     """Raised when permission is outside the allowlist."""
 
 
-class ViewSetFieldError(ValueError):
+class ViewSetFieldError(OctaveError, ValueError):
     """Raised when a filter/search/ordering field is unknown."""
 
 

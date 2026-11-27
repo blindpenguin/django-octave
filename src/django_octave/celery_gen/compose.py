@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from django_octave.errors import OctaveError
+
 COMPOSE_MARKER_BEGIN = "# --- django-octave celery begin ---"
 COMPOSE_MARKER_END = "# --- django-octave celery end ---"
 
 
-class ComposeInjectError(ValueError):
+class ComposeInjectError(OctaveError, ValueError):
     """Raised when compose injection cannot complete safely."""
 
 

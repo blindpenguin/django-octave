@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from django_octave.errors import OctaveError
 from django_octave.inspect.model_fields import (
     ModelFieldInfo,
     inspect_model_fields_path,
@@ -20,11 +21,11 @@ from django_octave.models_gen.cst_util import (
 from django_octave.models_gen.writer import ModelWriteError, model_exists
 
 
-class SerializerExistsError(FileExistsError):
+class SerializerExistsError(OctaveError, FileExistsError):
     """Raised when the serializer class already exists without force."""
 
 
-class SerializerFieldError(ValueError):
+class SerializerFieldError(OctaveError, ValueError):
     """Raised when a requested field name is not known on the model."""
 
 

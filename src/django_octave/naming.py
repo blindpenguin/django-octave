@@ -5,6 +5,7 @@ from __future__ import annotations
 import keyword
 import re
 
+from django_octave.errors import OctaveError
 from django_octave.rendering.context import normalize_slug
 
 RESERVED_APP_NAMES: frozenset[str] = frozenset(
@@ -27,7 +28,7 @@ RESERVED_APP_NAMES: frozenset[str] = frozenset(
 _IDENTIFIER_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 
 
-class InvalidAppNameError(ValueError):
+class InvalidAppNameError(OctaveError, ValueError):
     """Raised when an app name is invalid or reserved."""
 
 
@@ -89,7 +90,7 @@ def model_name_from_app(app_name: str) -> str:
 _PASCAL_RE = re.compile(r"^[A-Z][A-Za-z0-9]*$")
 
 
-class InvalidModelNameError(ValueError):
+class InvalidModelNameError(OctaveError, ValueError):
     """Raised when a model class name is invalid."""
 
 

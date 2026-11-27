@@ -5,16 +5,17 @@ from __future__ import annotations
 import libcst as cst
 from libcst import matchers as m
 
+from django_octave.errors import OctaveError
 from django_octave.fields.codegen import field_source, needs_uuid_import, str_field_name
 from django_octave.fields.parser import FieldSpec
 from django_octave.formatting import format_written_python
 
 
-class ModelExistsError(FileExistsError):
+class ModelExistsError(OctaveError, FileExistsError):
     """Raised when the model class already exists without force."""
 
 
-class ModelWriteError(ValueError):
+class ModelWriteError(OctaveError, ValueError):
     """Raised when models.py cannot be updated safely."""
 
 

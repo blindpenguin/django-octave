@@ -14,6 +14,8 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
+from django_octave.errors import OctaveError
+
 IGNORED_DIRS = frozenset(
     {
         ".git",
@@ -31,7 +33,7 @@ IGNORED_DIRS = frozenset(
 )
 
 
-class GeneratedCodeError(ValueError):
+class GeneratedCodeError(OctaveError, ValueError):
     """Raised when a command would leave a Python file that does not parse."""
 
 

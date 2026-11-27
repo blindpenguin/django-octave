@@ -8,13 +8,14 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
+from django_octave.errors import OctaveError
 from django_octave.rendering.app_context import AppContext
 from django_octave.tenancy import ensure_tenancy_module
 
 APP_TEMPLATES_ROOT = Path(__file__).resolve().parent.parent / "templates" / "app"
 
 
-class AppExistsError(FileExistsError):
+class AppExistsError(OctaveError, FileExistsError):
     """Raised when the app directory already exists without force."""
 
 

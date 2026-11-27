@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from django_octave.errors import OctaveError
 from django_octave.inspect.model_fields import (
     ModelFieldInfo,
     inspect_model_fields_path,
@@ -32,11 +33,11 @@ _LIST_DISPLAY_CAP = 8  # after id
 _LIST_FILTER_CAP = 6
 
 
-class AdminExistsError(FileExistsError):
+class AdminExistsError(OctaveError, FileExistsError):
     """Raised when the admin class already exists without force."""
 
 
-class AdminFieldError(ValueError):
+class AdminFieldError(OctaveError, ValueError):
     """Raised when an override field name is unknown."""
 
 

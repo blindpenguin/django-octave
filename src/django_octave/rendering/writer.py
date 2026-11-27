@@ -7,6 +7,7 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+from django_octave.errors import OctaveError
 from django_octave.rendering.context import ProjectContext
 from django_octave.rendering.engine import (
     TEMPLATES_ROOT,
@@ -15,15 +16,15 @@ from django_octave.rendering.engine import (
 )
 
 
-class TargetExistsError(FileExistsError):
+class TargetExistsError(OctaveError, FileExistsError):
     """Raised when the target directory exists and is non-empty without force."""
 
 
-class TargetSymlinkError(ValueError):
+class TargetSymlinkError(OctaveError, ValueError):
     """Raised when a path the generator would write passes through a symlink."""
 
 
-class TargetWriteError(ValueError):
+class TargetWriteError(OctaveError, ValueError):
     """Raised when a generated file cannot be written into an existing target."""
 
 

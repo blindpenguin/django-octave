@@ -7,6 +7,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
+from django_octave.errors import OctaveError
 from django_octave.project.detect import detect_project
 from django_octave.tenancy import ensure_tenancy_module
 
@@ -23,7 +24,7 @@ _DEFAULT_CORS_ORIGINS = (
 )
 
 
-class DjangoPatchError(ValueError):
+class DjangoPatchError(OctaveError, ValueError):
     """Raised when Django patches cannot complete safely."""
 
 

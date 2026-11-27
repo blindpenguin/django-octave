@@ -5,8 +5,10 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from django_octave.errors import OctaveError
 
-class PatchError(ValueError):
+
+class PatchError(OctaveError, ValueError):
     """Raised when a project file cannot be patched safely."""
 
 

@@ -7,10 +7,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from django_octave.errors import OctaveError
+
 TENANCY_IMPORT = "from apps.core.tenancy import TenantScopedMixin\n"
 
 
-class TenancyModuleMissingError(ValueError):
+class TenancyModuleMissingError(OctaveError, ValueError):
     """Raised when a multitenancy project lacks ``apps/core/tenancy.py``."""
 
 

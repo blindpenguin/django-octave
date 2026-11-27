@@ -9,6 +9,7 @@ from pathlib import Path
 
 from django_octave.api_parts.permission_gen import resolve_viewset_class_name
 from django_octave.api_parts.viewset_gen import resolve_permission
+from django_octave.errors import OctaveError
 from django_octave.models_gen.cst_util import (
     add_to_import,
     class_exists,
@@ -33,19 +34,19 @@ _ACTION_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _TAG_RE = re.compile(r'tags\s*=\s*\[\s*["\']([^"\']+)["\']')
 
 
-class ActionExistsError(FileExistsError):
+class ActionExistsError(OctaveError, FileExistsError):
     """Raised when the action method already exists without force."""
 
 
-class ActionNameError(ValueError):
+class ActionNameError(OctaveError, ValueError):
     """Raised for invalid action method names."""
 
 
-class ActionMethodError(ValueError):
+class ActionMethodError(OctaveError, ValueError):
     """Raised for invalid HTTP methods."""
 
 
-class ActionTargetError(ValueError):
+class ActionTargetError(OctaveError, ValueError):
     """Raised when the viewset or serializer target is missing."""
 
 
