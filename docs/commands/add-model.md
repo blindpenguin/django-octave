@@ -59,3 +59,5 @@ Python keywords (`class`, `import`, …) and Django model methods (`save`, `dele
 ## What it changes
 
 Model in `apps/<app>/models.py`, plus serializer / admin / viewset / router updates for the new model.
+
+The generated admin lists the model's fields in `list_display`, except many-to-many fields, which Django's admin does not allow there.

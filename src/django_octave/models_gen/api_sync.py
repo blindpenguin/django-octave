@@ -32,7 +32,13 @@ class {model_name}Serializer(serializers.ModelSerializer):
 
 
 def _admin_class(model_name: str, fields: list[FieldSpec]) -> str:
-    display_names = ["id", *[f.name for f in fields], "created_at", "updated_at"]
+    # Django's admin check rejects many-to-many fields in list_display (admin.E109).
+    display_names = [
+        "id",
+        *[f.name for f in fields if f.type_key != "m2m"],
+        "created_at",
+        "updated_at",
+    ]
     display = ", ".join(f'"{n}"' for n in display_names)
     search_fields = [f.name for f in fields if f.type_key in {"char", "slug", "email", "text"}]
     search = "(" + ", ".join(f'"{n}"' for n in search_fields) + ("," if search_fields else "") + ")"
